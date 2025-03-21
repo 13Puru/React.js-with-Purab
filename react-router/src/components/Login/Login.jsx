@@ -31,7 +31,7 @@ function Login() {
             console.log("Full API Response:", result.data);
     
             if (result.data.success) {
-                const { token, email, username } = result.data; // Extract email directly
+                const { token, email, username, role, user_id } = result.data; // Extract role as well
     
                 if (!email || !username) {
                     console.error("Email / username is missing in API response");
@@ -42,6 +42,8 @@ function Login() {
                 localStorage.setItem('userToken', token);
                 localStorage.setItem('userEmail', email);
                 localStorage.setItem('username', username);
+                localStorage.setItem('userRole', role); 
+                localStorage.setItem('userId', user_id);
     
                 navigate('/dashboard');
             } else {

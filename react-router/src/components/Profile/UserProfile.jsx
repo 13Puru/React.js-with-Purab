@@ -1,47 +1,92 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Mail, Phone, Briefcase, Shield, Calendar, Edit2, Camera } from "lucide-react";
+import { ArrowLeft, User, Mail, Calendar, LogOut, CheckCircle, Ticket, CheckSquare } from "lucide-react";
 import Card from "../Card/Card";
 import { motion } from "framer-motion";
+import axios from "axios";
 
-const UserProfile = ({setActiveView}) => {
+const UserProfile = ({ setActiveView }) => {
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState(null);
+  const [ticketStats, setTicketStats] = useState({
+    created: 0,
+    resolved: 0,
+    pending: 0
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulate fetching profile data from API
+    // Fetch profile data from API
     const fetchProfile = async () => {
       setIsLoading(true);
       try {
-        // In a real app, you would fetch from your API
-        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-        
-        // Mock profile data
-        const mockProfile = {
-          id: "usr_12345",
-          name: "Jane Smith",
-          email: "jane.smith@example.com",
-          phone: "+1 (555) 987-6543",
-          role: "agent",
-          department: "Customer Service",
-          avatar: null, // Would be an image URL in production
-          joinDate: "2023-06-15",
-          lastActive: "2025-03-17T14:30:00Z",
-          ticketsCreated: 24,
-          ticketsResolved: 187
-        };
-        
-        setProfileData(mockProfile);
+        const userId = localStorage.getItem('userId');
+        const token = localStorage.getItem('userToken');
+
+        if (!token) {
+            console.error("Token not found. Redirecting to login.");
+            setError("Unauthorized. Please log in again.");
+            return;
+        }
+
+        const response = await axios.get(`http://localhost:4000/api/user/get-profile/${userId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            withCredentials: true,
+        });
+
+        if (response.data.success) {
+            const userData = response.data.user;
+            setProfileData({
+                id: userData.user_id,
+                name: userData.username,
+                email: userData.email,
+                role: userData.role || "agent",
+                joinDate: userData.created_at,
+                isVerified: userData.isverified || false,
+            });
+            
+            // Fetch ticket statistics
+            await fetchTicketStats(userId, token);
+        } else {
+            setError("Failed to load profile. Please try again.");
+        }
       } catch (err) {
-        setError("Failed to load profile. Please try again.");
         console.error("Error fetching profile:", err);
+        if (err.response && err.response.status === 401) {
+          setError("Unauthorized. Please login again.");
+        } else {
+          setError("Failed to load profile. Please try again.");
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
+    // Fetch ticket statistics
+    const fetchTicketStats = async (userId, token) => {
+      try {
+        const response = await axios.get(`http://localhost:4000/api/ticket/ticket-stat/${userId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          withCredentials: true,
+        });
+    
+        if (response.data.success) {
+          setTicketStats({
+            created: response.data.ticket_status.created_tickets || 0,  // ✅ Correct key
+            resolved: response.data.ticket_status.resolved_tickets || 0,
+            pending: response.data.ticket_status.in_progress_tickets || 0
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching ticket stats:", err);
+      }
+    };
+    
     fetchProfile();
   }, []);
 
@@ -73,24 +118,55 @@ const UserProfile = ({setActiveView}) => {
       case "admin":
         return (
           <div className="flex items-center text-purple-700 bg-purple-50 px-3 py-1 rounded-full text-sm">
-            <Shield size={16} className="mr-1" />
             Administrator
           </div>
         );
       case "agent":
         return (
           <div className="flex items-center text-blue-700 bg-blue-50 px-3 py-1 rounded-full text-sm">
-            <User size={16} className="mr-1" />
             Support Agent
           </div>
         );
       default:
         return (
           <div className="flex items-center text-gray-700 bg-gray-100 px-3 py-1 rounded-full text-sm">
-            <User size={16} className="mr-1" />
             Standard User
           </div>
         );
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userToken');
+    navigate('/login');
+  };
+
+  const handleVerifyEmail = async () => {
+    try {
+      const userId = localStorage.getItem('userId');
+      const token = localStorage.getItem('userToken');
+      
+      await axios.post(`http://localhost:4000/api/user/send-verification-email`, 
+        { userId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          withCredentials: true,
+        }
+      );
+      
+      alert("Verification email sent. Please check your inbox.");
+    } catch (err) {
+      console.error("Error sending verification email:", err);
+      alert("Failed to send verification email. Please try again.");
     }
   };
 
@@ -151,31 +227,16 @@ const UserProfile = ({setActiveView}) => {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        className="grid grid-cols-1 md:grid-cols-2 gap-6"
       >
-        {/* Profile Summary Card */}
-        <motion.div variants={itemVariants} className="md:col-span-1">
+        {/* Profile Card */}
+        <motion.div variants={itemVariants}>
           <Card>
             <div className="p-6 flex flex-col items-center text-center">
-              <div className="relative mb-4">
+              <div className="mb-4">
                 <div className="w-24 h-24 rounded-full bg-indigo-100 flex items-center justify-center">
-                  {profileData.avatar ? (
-                    <img 
-                      src={profileData.avatar} 
-                      alt={profileData.name} 
-                      className="w-24 h-24 rounded-full object-cover" 
-                    />
-                  ) : (
-                    <User size={40} className="text-indigo-400" />
-                  )}
+                  <User size={40} className="text-indigo-400" />
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="absolute bottom-0 right-0 p-1.5 bg-indigo-600 text-white rounded-full shadow-lg"
-                >
-                  <Camera size={16} />
-                </motion.button>
               </div>
               
               <h2 className="text-xl font-semibold mt-2">{profileData.name}</h2>
@@ -185,117 +246,119 @@ const UserProfile = ({setActiveView}) => {
                 <div className="flex items-center py-2 border-b border-gray-100">
                   <Mail size={16} className="text-gray-400 mr-2" />
                   <span className="text-sm text-gray-600">{profileData.email}</span>
-                </div>
-                <div className="flex items-center py-2 border-b border-gray-100">
-                  <Phone size={16} className="text-gray-400 mr-2" />
-                  <span className="text-sm text-gray-600">{profileData.phone}</span>
-                </div>
-                <div className="flex items-center py-2 border-b border-gray-100">
-                  <Briefcase size={16} className="text-gray-400 mr-2" />
-                  <span className="text-sm text-gray-600">{profileData.department}</span>
+                  {profileData.isVerified ? (
+                    <span className="ml-2 text-xs text-green-600 flex items-center">
+                      <CheckCircle size={12} className="mr-1" /> Verified
+                    </span>
+                  ) : (
+                    <span className="ml-2 text-xs text-amber-600">Not Verified</span>
+                  )}
                 </div>
                 <div className="flex items-center py-2">
                   <Calendar size={16} className="text-gray-400 mr-2" />
                   <span className="text-sm text-gray-600">
-                    Joined {new Date(profileData.joinDate).toLocaleDateString()}
+                    Joined {formatDate(profileData.joinDate)}
                   </span>
                 </div>
               </div>
               
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="mt-6 w-full px-4 py-2 bg-indigo-700 rounded-md text-sm font-medium text-white hover:bg-indigo-800 flex items-center justify-center"
-                onClick={() => navigate("/edit-profile")}
-              >
-                <Edit2 size={16} className="mr-2" />
-                Edit Profile
-              </motion.button>
+              <div className="mt-6 w-full space-y-3">
+                {!profileData.isVerified && (
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="w-full px-4 py-2 bg-purple-700 rounded-md text-sm font-medium text-white hover:bg-purple-600 flex items-center justify-center"
+                    onClick={handleVerifyEmail}
+                  >
+                    <CheckCircle size={16} className="mr-2" />
+                    Verify Email
+                  </motion.button>
+                )}
+                
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="w-full px-4 py-2 bg-indigo-600 rounded-md text-sm font-medium text-white hover:bg-indigo-600 flex items-center justify-center"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={16} className="mr-2" />
+                  Logout
+                </motion.button>
+              </div>
             </div>
           </Card>
         </motion.div>
 
-        {/* Activity and Stats */}
-        <motion.div variants={itemVariants} className="md:col-span-2">
+        {/* Ticket Statistics Card */}
+        <motion.div variants={itemVariants}>
           <Card>
             <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Activity Overview</h3>
+              <h2 className="text-xl font-semibold mb-6 text-gray-800">Ticket Statistics</h2>
               
               <div className="space-y-6">
-                {/* Last Active */}
-                <motion.div 
-                  variants={itemVariants}
-                  className="flex items-center p-4 bg-gray-50 rounded-lg"
-                >
-                  <div className="p-3 bg-green-100 rounded-full">
-                    <Calendar size={20} className="text-green-600" />
+                {/* Created Tickets */}
+                <div className="flex items-center p-4 bg-blue-50 rounded-lg">
+                  <div className="p-3 rounded-full bg-blue-100 mr-4">
+                    <Ticket size={24} className="text-blue-600" />
                   </div>
-                  <div className="ml-4">
-                    <h4 className="text-sm font-medium text-gray-800">Last Active</h4>
-                    <p className="text-sm text-gray-600">
-                      {new Date(profileData.lastActive).toLocaleDateString()} at{" "}
-                      {new Date(profileData.lastActive).toLocaleTimeString()}
-                    </p>
+                  <div>
+                    <p className="text-sm text-gray-600">Created Tickets</p>
+                    <p className="text-2xl font-bold text-gray-800">{ticketStats.created}</p>
                   </div>
-                </motion.div>
-                
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <motion.div
-                    variants={itemVariants} 
-                    className="p-4 border border-gray-200 rounded-lg"
-                  >
-                    <h4 className="text-sm text-gray-500">Tickets Created</h4>
-                    <div className="mt-2 flex items-end">
-                      <span className="text-2xl font-bold text-gray-800">{profileData.ticketsCreated}</span>
-                      <span className="ml-2 text-xs text-gray-500">All time</span>
-                    </div>
-                  </motion.div>
-                  
-                  <motion.div
-                    variants={itemVariants} 
-                    className="p-4 border border-gray-200 rounded-lg"
-                  >
-                    <h4 className="text-sm text-gray-500">Tickets Resolved</h4>
-                    <div className="mt-2 flex items-end">
-                      <span className="text-2xl font-bold text-green-600">{profileData.ticketsResolved}</span>
-                      {profileData.role !== "user" && (
-                        <span className="ml-2 text-xs text-gray-500">All time</span>
-                      )}
-                    </div>
-                  </motion.div>
                 </div>
                 
-                {/* Recent Activity */}
-                <motion.div variants={itemVariants} className="mt-6">
-                  <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-                  <div className="space-y-3">
-                    {/* In a real app, you would map over real activity data */}
-                    {[1, 2, 3].map((item) => (
-                      <motion.div 
-                        key={item}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: item * 0.1 }}
-                        className="flex items-start p-3 border-b border-gray-100"
-                      >
-                        <div className="h-2 w-2 rounded-full bg-blue-500 mt-2 mr-3"></div>
-                        <div>
-                          <p className="text-sm text-gray-800">
-                            {item === 1 ? "Replied to ticket #5432" : 
-                             item === 2 ? "Created new ticket #5438" : 
-                             "Updated personal information"}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {item === 1 ? "2 hours ago" : 
-                             item === 2 ? "Yesterday at 3:45 PM" : 
-                             "3 days ago"}
-                          </p>
-                        </div>
-                      </motion.div>
-                    ))}
+                {/* Resolved Tickets */}
+                <div className="flex items-center p-4 bg-green-50 rounded-lg">
+                  <div className="p-3 rounded-full bg-green-100 mr-4">
+                    <CheckSquare size={24} className="text-green-600" />
                   </div>
-                </motion.div>
+                  <div>
+                    <p className="text-sm text-gray-600">Resolved Tickets</p>
+                    <p className="text-2xl font-bold text-gray-800">{ticketStats.resolved}</p>
+                  </div>
+                </div>
+                
+                {/* Pending Tickets */}
+                <div className="flex items-center p-4 bg-amber-50 rounded-lg">
+                  <div className="p-3 rounded-full bg-amber-100 mr-4">
+                    <Ticket size={24} className="text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Pending Tickets</p>
+                    <p className="text-2xl font-bold text-gray-800">{ticketStats.pending}</p>
+                  </div>
+                </div>
+                
+                {/* Resolution Rate */}
+                <div className="mt-6">
+                  <p className="text-sm text-gray-600 mb-2">Resolution Rate</p>
+                  <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-green-500 rounded-full"
+                      style={{ 
+                        width: `${ticketStats.created > 0 
+                          ? Math.round((ticketStats.resolved / ticketStats.created) * 100) 
+                          : 0}%` 
+                      }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-right mt-1 text-gray-600">
+                    {ticketStats.created > 0 
+                      ? Math.round((ticketStats.resolved / ticketStats.created) * 100) 
+                      : 0}%
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="w-full px-4 py-2 bg-gray-100 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 flex items-center justify-center"
+                  onClick={() => setActiveView("tickets")}
+                >
+                  View All Tickets
+                </motion.button>
               </div>
             </div>
           </Card>

@@ -1,19 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Mail, Phone, Key, Briefcase, Shield, AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, User, Mail, Key, Briefcase, Shield, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import Card from "../Card/Card";
+import axios from "axios"; // Import axios for API calls
+
 
 const CreateUser = ({setActiveView}) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: "",
+    username: "", // Changed from name to username to match backend
     email: "",
     phone: "",
     password: "",
     confirmPassword: "",
-    role: "user",
+    role: "",
     department: ""
   });
+  
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -52,8 +56,8 @@ const CreateUser = ({setActiveView}) => {
     let tempErrors = {};
     let isValid = true;
 
-    if (!formData.name.trim()) {
-      tempErrors.name = "Name is required";
+    if (!formData.username.trim()) {
+      tempErrors.username = "Username is required";
       isValid = false;
     }
 
@@ -62,11 +66,6 @@ const CreateUser = ({setActiveView}) => {
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       tempErrors.email = "Email is invalid";
-      isValid = false;
-    }
-
-    if (!formData.phone.trim()) {
-      tempErrors.phone = "Phone number is required";
       isValid = false;
     }
 
@@ -83,10 +82,8 @@ const CreateUser = ({setActiveView}) => {
       isValid = false;
     }
 
-    if (!formData.department) {
-      tempErrors.department = "Department is required";
-      isValid = false;
-    }
+    // Department is not required in your backend but we'll keep this validation
+    
 
     setErrors(tempErrors);
     return isValid;
@@ -99,22 +96,55 @@ const CreateUser = ({setActiveView}) => {
       setIsSubmitting(true);
       
       try {
-        // API call would go here
-        console.log("Submitting user data:", formData);
+        // Get auth token from localStorage (assuming you store it there)
+        const token = localStorage.getItem("userToken");
         
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!token) {
+          throw new Error("Authentication token not found");
+        }
         
-        // Show success notification
-        alert("User created successfully!");
+        // Prepare data for API - only include fields the backend expects
+        const userData = {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          department: formData.department,
+          role: formData.role
+        };
         
-        // Redirect to users list
-        navigate("/view-users");
+        // Make API call
+        const response = await axios.post(
+          "http://localhost:4000/api/user/create-user", 
+          userData,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+        
+        // Handle success
+        if (response.data.success) {
+          alert("User created successfully! Login credentials sent via email.");
+          setActiveView("ViewUsers"); 
+        } else {
+          throw new Error(response.data.message || "Failed to create user");
+        }
+        
       } catch (error) {
         console.error("Error creating user:", error);
-        setErrors({
-          submit: "Failed to create user. Please try again."
-        });
+        
+        // Handle specific error messages from the API
+        if (error.response && error.response.data) {
+          setErrors({
+            submit: error.response.data.message || "Failed to create user. Please try again."
+          });
+        } else {
+          setErrors({
+            submit: "Failed to create user. Please try again."
+          });
+        }
       } finally {
         setIsSubmitting(false);
       }
@@ -125,14 +155,15 @@ const CreateUser = ({setActiveView}) => {
     try {
       const userEmail = localStorage.getItem("userEmail") || "";
       const username = localStorage.getItem("username") || "";
-      return { email: userEmail, username };
+      const role = localStorage.getItem("userRole") || "";
+      return { email: userEmail, username, role };
     } catch (error) {
       console.error("Error retrieving user info:", error);
-      return { email: "", username: "" };
+      return { email: "", username: "" , role: ""};
     }
   };
 
-  const { email, username } = getUserInfo();
+  const { email, username, role } = getUserInfo();
 
   return (
     <div className="p-6">
@@ -144,7 +175,6 @@ const CreateUser = ({setActiveView}) => {
           <ArrowLeft size={20} className="text-gray-700" />
         </button>
         <h1 className="text-2xl font-bold text-gray-800">Create New User</h1>
-        
       </div>
       <div className="mb-4 ml-6"> <b>{username}</b> with email: <b>{email}</b> is creating a new user for the system </div>
 
@@ -158,10 +188,10 @@ const CreateUser = ({setActiveView}) => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Name Field */}
+            {/* Username Field - changed from name to username */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                Username
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -169,18 +199,18 @@ const CreateUser = ({setActiveView}) => {
                 </div>
                 <input
                   type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
+                  id="username"
+                  name="username"
+                  value={formData.username}
                   onChange={handleChange}
                   className={`block w-full pl-10 pr-3 py-2 border ${
-                    errors.name ? 'border-red-300' : 'border-gray-300'
+                    errors.username ? 'border-red-300' : 'border-gray-300'
                   } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                  placeholder="John Doe"
+                  placeholder="johndoe"
                 />
               </div>
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+              {errors.username && (
+                <p className="mt-1 text-sm text-red-600">{errors.username}</p>
               )}
             </div>
 
@@ -207,32 +237,6 @@ const CreateUser = ({setActiveView}) => {
               </div>
               {errors.email && (
                 <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
-            
-            {/* Phone Field */}
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Phone size={16} className="text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className={`block w-full pl-10 pr-3 py-2 border ${
-                    errors.phone ? 'border-red-300' : 'border-gray-300'
-                  } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                  placeholder="+1 (555) 123-4567"
-                />
-              </div>
-              {errors.phone && (
-                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
               )}
             </div>
 
