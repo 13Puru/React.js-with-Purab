@@ -79,7 +79,7 @@ const UserProfile = ({ setActiveView }) => {
           setTicketStats({
             created: response.data.ticket_status.created_tickets || 0,  // ✅ Correct key
             resolved: response.data.ticket_status.resolved_tickets || 0,
-            pending: response.data.ticket_status.in_progress_tickets || 0
+            pending: response.data.ticket_status.pending_tickets || 0
           });
         }
       } catch (err) {

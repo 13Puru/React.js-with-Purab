@@ -34,11 +34,6 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem("userToken");  // Clear token
-    navigate("/login");
-  };
-
   // For sidebar
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -212,12 +207,6 @@ const Dashboard = () => {
             {/* Header with Dashboard Title & Logout Button */}
             <div className="w-full flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-              <button
-                onClick={handleLogout}
-                className="border-2 border-[#432dd7] hover:bg-[#432da1] font-semibold text-gray-800 hover:text-white px-10 py-1.5 rounded-lg transition"
-              >
-                Logout
-              </button>
             </div>
 
             {/* Stats Cards */}
