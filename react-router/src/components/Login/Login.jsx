@@ -14,6 +14,7 @@ function Login() {
     const [error, setError] = useState('');
     const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('userEmail'));
     const navigate = useNavigate();
+    const LOGIN_URL = import.meta.env.VITE_LOGIN;
 
     // Clear errors when inputs change
     useEffect(() => {
@@ -26,7 +27,7 @@ function Login() {
         setError('');
     
         try {
-            const result = await axios.post('http://localhost:4000/api/auth/login', { email, password });
+            const result = await axios.post(LOGIN_URL, { email, password });
     
             console.log("Full API Response:", result.data);
     

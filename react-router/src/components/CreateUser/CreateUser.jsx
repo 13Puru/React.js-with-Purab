@@ -22,6 +22,7 @@ const CreateUser = ({setActiveView}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const API_CREATE_USER = import.meta.env.VITE_CREATE_USER;
 
   const departments = [
     "IT",
@@ -114,7 +115,7 @@ const CreateUser = ({setActiveView}) => {
         
         // Make API call
         const response = await axios.post(
-          "http://localhost:4000/api/user/create-user", 
+          API_CREATE_USER, 
           userData,
           {
             headers: {

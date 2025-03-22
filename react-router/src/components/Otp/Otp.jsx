@@ -7,6 +7,7 @@ function Otp() {
     const [otp, setOtp] = useState("");
     const [email, setEmail] = useState(""); // State for email
     const navigate = useNavigate();
+    const API_VERIFY_EMAIL = import.meta.env.VITE_EMAIL_VERIFY
 
     // Retrieve email on component mount
     useEffect(() => {
@@ -27,7 +28,7 @@ function Otp() {
         }
 
         try {
-            const response = await axios.post("http://localhost:4000/api/auth/verify-account", {
+            const response = await axios.post(API_VERIFY_EMAIL, {
                 email,
                 otp: otp.trim(), // Trim whitespace
             });

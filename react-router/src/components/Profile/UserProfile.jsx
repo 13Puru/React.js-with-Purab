@@ -15,6 +15,8 @@ const UserProfile = ({ setActiveView }) => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const API_GET_PROFILE = import.meta.env.VITE_GET_PROFILE;
+  const API_GET_TICKET_STAT = import.meta.env.VITE_GET_TICKET_STAT;
 
   useEffect(() => {
     // Fetch profile data from API
@@ -30,7 +32,7 @@ const UserProfile = ({ setActiveView }) => {
             return;
         }
 
-        const response = await axios.get(`http://localhost:4000/api/user/get-profile/${userId}`, {
+        const response = await axios.get(`${API_GET_PROFILE}/${userId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -68,7 +70,7 @@ const UserProfile = ({ setActiveView }) => {
     // Fetch ticket statistics
     const fetchTicketStats = async (userId, token) => {
       try {
-        const response = await axios.get(`http://localhost:4000/api/ticket/ticket-stat/${userId}`, {
+        const response = await axios.get(`${API_GET_TICKET_STAT}/${userId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

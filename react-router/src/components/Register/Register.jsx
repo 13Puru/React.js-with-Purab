@@ -17,6 +17,7 @@ function Registration() {
     const [errors, setErrors] = useState({});
     const [formStep, setFormStep] = useState(0);
     const navigate = useNavigate();
+    const API_REGISTER = import.meta.env.VITE_REGISTER;
 
     // Password strength indicator
     const [passwordStrength, setPasswordStrength] = useState({
@@ -129,7 +130,7 @@ function Registration() {
 
         try {
             const { username, email, password } = formData;
-            const result = await axios.post('http://localhost:4000/api/auth/register', { username, email, password });
+            const result = await axios.post(API_REGISTER, { username, email, password });
 
             if (result.data.success) {
                 localStorage.setItem("email", email);

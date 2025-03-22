@@ -224,7 +224,7 @@ const Dashboard = () => {
                 value="42"
                 trend="+21 from last week"
                 trendUp={true}
-              />
+              /> 
               <StatsCard
                 icon={<CheckCircle className="text-green-600" />}
                 title="Resolved This Week"

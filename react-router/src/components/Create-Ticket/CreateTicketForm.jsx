@@ -23,6 +23,7 @@ export const CreateTicketForm = ({ setActiveView }) => {
   const [priority, setPriority] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const API_CREATE_TICKET = import.meta.env.VITE_CREATE_TICKET;
 
   const handleCreateTicket = async (e) => {
     e.preventDefault();
@@ -42,7 +43,7 @@ export const CreateTicketForm = ({ setActiveView }) => {
 
     try {
       const response = await axios.post(
-        "http://localhost:4000/api/ticket/create-ticket",
+        API_CREATE_TICKET,
         { subject, issue, category, priority },
         { headers: { Authorization: `Bearer ${token}` } }
       );
