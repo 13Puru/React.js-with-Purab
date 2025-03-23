@@ -22,6 +22,7 @@ const CreateUser = ({setActiveView}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const [roleOfUser, setUserRole] = useState(localStorage.getItem("userRole"))
   const API_CREATE_USER = import.meta.env.VITE_CREATE_USER;
 
   const departments = [
@@ -349,6 +350,8 @@ const CreateUser = ({setActiveView}) => {
               User Role
             </label>
             <div className="flex flex-wrap gap-4">
+              {roleOfUser === "admin" && (
+                <>
               <label className={`flex items-center p-3 border rounded-lg cursor-pointer ${
                 formData.role === 'admin' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'
               }`}>
@@ -367,6 +370,7 @@ const CreateUser = ({setActiveView}) => {
                 </div>
               </label>
               
+              
               <label className={`flex items-center p-3 border rounded-lg cursor-pointer ${
                 formData.role === 'agent' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'
               }`}>
@@ -384,6 +388,8 @@ const CreateUser = ({setActiveView}) => {
                   <span className="block text-xs text-gray-500">Can manage tickets</span>
                 </div>
               </label>
+              </>
+              )}
               
               <label className={`flex items-center p-3 border rounded-lg cursor-pointer ${
                 formData.role === 'user' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'
