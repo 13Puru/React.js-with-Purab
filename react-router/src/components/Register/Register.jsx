@@ -243,7 +243,7 @@ function Registration() {
                                         className={`p-3 pl-10 rounded-lg border ${errors.email ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 focus:ring-indigo-400'} w-full focus:outline-none focus:ring-2 transition-all`}
                                         type="email"
                                         name="email"
-                                        placeholder="Your email address"
+                                        placeholder="example@teamkarimganj.com"
                                         value={formData.email}
                                         onChange={handleInputChange}
                                     />

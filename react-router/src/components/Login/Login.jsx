@@ -131,7 +131,7 @@ function Login() {
                                 className="p-3 pl-10 rounded-lg border border-gray-300 w-full focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
                                 type="email"
                                 name="email"
-                                placeholder="Your email address"
+                                placeholder="example@teamkarimganj.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required

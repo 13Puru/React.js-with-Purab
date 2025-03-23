@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   Plus,
   Ticket,
@@ -28,6 +29,7 @@ import tickets from "../SampleTickets/Tickets";
 import ViewUsers from "../ViewUsers/ViewUsers";
 import CreateUser from "../CreateUser/CreateUser";
 import UserProfile from "../Profile/UserProfile";
+import TicketDetails from "../TicketDetails/TicketDetails"; // Assuming TicketDetails is in a separate file
 
 const Dashboard = () => {
   const [activeView, setActiveView] = useState("dashboard");
@@ -36,6 +38,19 @@ const Dashboard = () => {
 
   // For sidebar
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Added missing state declarations
+  const [ticketStats, setTicketStats] = useState({
+    open: { value: "0", trend: "0 from yesterday", trendUp: false },
+    closed: { value: "0", trend: "0 from last week", trendUp: false },
+    resolved: { value: "0", trend: "0 from last week", trendUp: false }
+  });
+  const [priorityIssues, setPriorityIssues] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [tickets, setTickets] = useState([]);
+
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -48,6 +63,180 @@ const Dashboard = () => {
   const navigateTo = (path) => {
     navigate(path);
   };
+
+  // Helper function to generate activity description
+  const getActivityDescription = (ticket) => {
+    if (ticket.lastAction === 'assignment') {
+      return `Assigned to ${ticket.assignedTo}`;
+    } else if (ticket.lastAction === 'status_change') {
+      return `Status changed to ${ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}`;
+    } else if (ticket.lastAction === 'comment') {
+      return 'New comment added';
+    }
+    return 'Updated';
+  };
+
+  // Helper function to calculate relative time
+  const getRelativeTime = (timestamp) => {
+    const now = new Date();
+    const ticketTime = new Date(timestamp);
+    const diffMinutes = Math.floor((now - ticketTime) / (1000 * 60));
+
+    if (diffMinutes < 60) {
+      return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+    } else if (diffMinutes < 1440) {
+      const hours = Math.floor(diffMinutes / 60);
+      return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    } else {
+      const days = Math.floor(diffMinutes / 1440);
+      return `${days} day${days !== 1 ? 's' : ''} ago`;
+    }
+  };
+
+  // fetch ticket status
+  // const fetchTicketStats = async () => {
+  //   try {
+  //     setIsLoading(true);
+  //     setError(null);
+
+  //     const token = localStorage.getItem("userToken");
+  //     if (!token) throw new Error("Unauthorized: No token found");
+
+  //     const response = await axios.get("http://localhost:4000/api/ticket/fetch-ticket-details", {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+
+  //     console.log("API Response:", response.data); // Debugging: Check API response
+
+  //     if (!response.data || typeof response.data !== "object" || Array.isArray(response.data)) {
+  //       throw new Error("Invalid API response: Expected an object but got an array.");
+  //     }
+
+  //     const {
+  //       stats = {}, 
+  //       priorityIssues = [], 
+  //       recentActivities = [], 
+  //       tickets = [] 
+  //     } = response.data;
+
+  //     setTicketStats({
+  //       open: {
+  //         value: stats.openTickets?.toString() || "0",
+  //         trend: stats.openTrend ? `${stats.openTrend > 0 ? "+" : ""}${stats.openTrend} from yesterday` : "N/A",
+  //         trendUp: stats.openTrend < 0
+  //       },
+  //       closed: {
+  //         value: stats.closedTickets?.toString() || "0",
+  //         trend: stats.closedTrend ? `${stats.closedTrend > 0 ? "+" : ""}${stats.closedTrend} from last week` : "N/A",
+  //         trendUp: stats.closedTrend > 0
+  //       },
+  //       resolved: {
+  //         value: stats.resolvedThisWeek?.toString() || "0",
+  //         trend: stats.resolvedTrend ? `${stats.resolvedTrend > 0 ? "+" : ""}${stats.resolvedTrend} from last week` : "N/A",
+  //         trendUp: stats.resolvedTrend > 0
+  //       }
+  //     });
+
+  //     setPriorityIssues(Array.isArray(priorityIssues) ? priorityIssues : []);
+  //     setRecentActivity(
+  //       Array.isArray(recentActivities)
+  //         ? recentActivities.map(ticket => ({
+  //             title: ticket?.title || "No title",
+  //             description: ticket?.description || "No details",
+  //             time: ticket?.updatedAt ? new Date(ticket.updatedAt).toLocaleString() : "Unknown time",
+  //           }))
+  //         : []
+  //     );
+  //     setTickets(Array.isArray(tickets) ? tickets : []);
+
+  //   } catch (error) {
+  //     console.error("Error fetching ticket stats:", error.message);
+  //     setError("Failed to load ticket statistics. Please try again later.");
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+  // Add useEffect to fetch ticket stats when component mounts
+  // useEffect(() => {
+  //   fetchTicketStats();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
+
+  const fetchTickets = async () => {
+    try {
+      // Get the auth token from wherever you store it (localStorage, context, etc.)
+      const authToken = localStorage.getItem('userToken'); // Or use your auth management system
+
+      const response = await axios.get('http://localhost:4000/api/ticket/get-ticket', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    const getTickets = async () => {
+      try {
+        setIsLoading(true);
+        const ticketData = await fetchTickets();
+
+        console.log("Fetched Tickets:", ticketData); // Debugging log
+
+        // Extract the tickets array correctly
+        setTickets(ticketData.tickets || []);
+
+        setError(null);
+      } catch (err) {
+        if (err.response && err.response.status === 401) {
+          setError('Authentication failed. Please log in again.');
+        } else {
+          setError('Failed to load tickets. Please try again later.');
+        }
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+
+
+    getTickets();
+
+    // Optional: Set up polling for real-time updates
+    // const pollingInterval = setInterval(getTickets, 30000); // Poll every 30 seconds
+    // return () => clearInterval(pollingInterval);
+  }, []);
+
+  const [activeViewLocal, setActiveViewLocal] = useState("dashboard");
+
+  // Handler to update both local and parent state
+  const handleTicketSelect = (ticketId) => {
+    setActiveViewLocal(ticketId);
+    setActiveView(ticketId);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex-grow flex items-center justify-center">
+        <p className="text-gray-500">Loading tickets...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-grow flex items-center justify-center">
+        <p className="text-red-500">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -95,26 +284,26 @@ const Dashboard = () => {
                   <Users size={16} className="text-gray-600 mr-2" />
                   <span className="font-medium">User Management</span>
                 </div>
-                {isUserMenuOpen ? 
-                  <ChevronUp size={16} className="text-gray-600" /> : 
+                {isUserMenuOpen ?
+                  <ChevronUp size={16} className="text-gray-600" /> :
                   <ChevronDown size={16} className="text-gray-600" />
                 }
               </>
             )}
           </button>
-          
+
           {/* Dropdown menu */}
           {(isUserMenuOpen || isCollapsed) && (
             <div className={`${isCollapsed ? 'px-1 pt-1' : 'pl-6 pb-2'} space-y-2`}>
-              <button 
+              <button
                 onClick={() => setActiveView("ViewUsers")}
                 className={`w-full text-left ${isCollapsed ? 'justify-center' : ''} flex items-center px-2 py-2 rounded-md hover:bg-gray-100 text-gray-700`}
               >
                 <Users size={16} className={`text-gray-600 ${isCollapsed ? '' : 'mr-2'}`} />
                 {!isCollapsed && <span className="text-sm">View Users</span>}
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => setActiveView("CreateUser")}
                 className={`w-full text-left ${isCollapsed ? 'justify-center' : ''} flex items-center px-2 py-2 rounded-md hover:bg-gray-100 text-gray-700`}
               >
@@ -122,7 +311,7 @@ const Dashboard = () => {
                 {!isCollapsed && <span className="text-sm">Create User</span>}
               </button>
 
-              <button 
+              <button
                 onClick={() => setActiveView("UserProfile")}
                 className={`w-full text-left ${isCollapsed ? 'justify-center' : ''} flex items-center px-2 py-2 rounded-md hover:bg-gray-100 text-gray-700`}
               >
@@ -132,7 +321,7 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-        <hr className="mb-3 border border-[#432dd7]"/>
+        <hr className="mb-3 border border-[#432dd7]" />
 
         {/* Search Bar */}
         {!isCollapsed && (
@@ -161,52 +350,60 @@ const Dashboard = () => {
         <div className="flex-grow overflow-y-auto">
           {!isCollapsed && (
             <h2 className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Recent Tickets
+              All Tickets
             </h2>
           )}
-          <ul className="divide-y divide-gray-200">
-            {tickets.map((ticket) => (
-              <li key={ticket.id}>
-                <button
-                  onClick={() => setActiveView(ticket.id)}
-                  className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${activeView === ticket.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''
-                    }`}
-                >
-                  {isCollapsed ? (
-                    <div className="flex flex-col items-center">
-                      <span className={`h-2 w-2 rounded-full ${statusColors[ticket.status].replace('text-', 'bg-')}`}></span>
-                      <span className="text-xs font-semibold text-gray-500 mt-1">{ticket.id.substring(0, 3)}</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold text-gray-500">{ticket.id}</span>
-                        <span className={`text-xs px-2 py-1 rounded-full ${statusColors[ticket.status]}`}>
-                          {ticket.status}
+          {tickets.length === 0 ? (
+            <p className="text-center py-4 text-gray-500">No tickets found</p>
+          ) : (
+            <ul className="divide-y divide-gray-200">
+              {tickets.map((ticket) => (
+                <li key={ticket.ticket_id}>
+                  <button
+                    onClick={() => handleTicketSelect(ticket.ticket_id)}
+                    className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${activeView === ticket.ticket_id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''
+                      }`}
+                  >
+                    {isCollapsed ? (
+                      <div className="flex flex-col items-center">
+                        <span className={`h-2 w-2 rounded-full ${statusColors[ticket.status].replace('text-', 'bg-')}`}></span>
+                        <span className="text-xs font-semibold text-gray-500 mt-1">
+                          {ticket.ticket_id.substring(0, 3)}
                         </span>
                       </div>
-                      <p className="text-sm font-medium text-gray-800 truncate">{ticket.subject}</p>
-                      <div className="mt-1">
-                        <span className={`text-xs px-2 py-1 rounded-full ${priorityColors[ticket.priority]}`}>
-                          {ticket.priority}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-gray-500">{ticket.ticket_id}</span>
+                          <span className={`text-xs px-2 py-1 rounded-full ${statusColors[ticket.status]}`}>
+                            {ticket.status}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-gray-800 truncate">{ticket.subject}</p>
+                        <div className="mt-1">
+                          <span className={`text-xs px-2 py-1 rounded-full ${priorityColors[ticket.priority]}`}>
+                            {ticket.priority}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
+
       </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {activeView === "dashboard" && (
           <>
-            {/* Header with Dashboard Title & Logout Button */}
+            {/* Header */}
             <div className="w-full flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+              {error && <div className="text-red-500">{error}</div>}
             </div>
 
             {/* Stats Cards */}
@@ -214,190 +411,88 @@ const Dashboard = () => {
               <StatsCard
                 icon={<Ticket className="text-indigo-600" />}
                 title="Open Tickets"
-                value="12"
-                trend="+2 from yesterday"
-                trendUp={false}
+                value={ticketStats?.open?.value || "0"}
+                trend={ticketStats?.open?.trend || "N/A"}
+                trendUp={ticketStats?.open?.trendUp || false}
+                isLoading={isLoading}
               />
               <StatsCard
                 icon={<Clock className="text-blue-600" />}
                 title="Closed Tickets"
-                value="42"
-                trend="+21 from last week"
-                trendUp={true}
-              /> 
+                value={ticketStats?.closed?.value || "0"}
+                trend={ticketStats?.closed?.trend || "N/A"}
+                trendUp={ticketStats?.closed?.trendUp || false}
+                isLoading={isLoading}
+              />
               <StatsCard
                 icon={<CheckCircle className="text-green-600" />}
                 title="Resolved This Week"
-                value="24"
-                trend="+5 from last week"
-                trendUp={true}
+                value={ticketStats?.resolved?.value || "0"}
+                trend={ticketStats?.resolved?.trend || "N/A"}
+                trendUp={ticketStats?.resolved?.trendUp || false}
+                isLoading={isLoading}
               />
             </div>
 
-            {/* Recent Activity & Priority Cards */}
+            {/* Recent Activity & Priority Issues */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <Card title="Recent Activity">
-                <ul className="divide-y divide-gray-200">
-                  <ActivityItem
-                    title="Network connectivity issue"
-                    description="Assigned to Network Team"
-                    time="10 minutes ago"
-                  />
-                  <ActivityItem
-                    title="Email not syncing on mobile"
-                    description="Status changed to In Progress"
-                    time="1 hour ago"
-                  />
-                  <ActivityItem
-                    title="Printer configuration needed"
-                    description="New comment added"
-                    time="3 hours ago"
-                  />
-                </ul>
+              <Card title="Recent Activity" isLoading={isLoading}>
+                {recentActivity.length > 0 ? (
+                  <ul className="divide-y divide-gray-200">
+                    {recentActivity.map((activity, index) => (
+                      <ActivityItem
+                        key={index}
+                        title={activity.title}
+                        description={activity.description}
+                        time={activity.time}
+                      />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-500 p-4">No recent activity found.</p>
+                )}
               </Card>
 
-              <Card title="Priority Issues">
-                <ul className="divide-y divide-gray-200">
-                  <PriorityItem
-                    id="TK-1001"
-                    title="Network connectivity issue"
-                    department="Network"
-                    priority="high"
-                  />
-                  <PriorityItem
-                    id="TK-1005"
-                    title="New laptop setup required"
-                    department="Hardware"
-                    priority="high"
-                  />
-                </ul>
+              <Card title="Priority Issues" isLoading={isLoading}>
+                {priorityIssues.length > 0 ? (
+                  <ul className="divide-y divide-gray-200">
+                    {priorityIssues.map((issue) => (
+                      <PriorityItem
+                        key={issue.id}
+                        id={issue.id}
+                        title={issue.title}
+                        department={issue.department}
+                        priority={issue.priority}
+                        onClick={() => setActiveView(String(issue.id))}
+                      />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-500 p-4">No priority issues found.</p>
+                )}
               </Card>
             </div>
 
-            {/* Performance Card */}
+            {/* Support Team Performance */}
             <Card title="Support Team Performance">
               <div className="space-y-4">
-                <PerformanceBar
-                  team="Network Team"
-                  value={85}
-                  color="bg-indigo-500"
-                />
-                <PerformanceBar
-                  team="Software Support"
-                  value={92}
-                  color="bg-green-500"
-                />
-                <PerformanceBar
-                  team="Hardware Support"
-                  value={78}
-                  color="bg-blue-500"
-                />
+                <PerformanceBar team="Network Team" value={85} color="bg-indigo-500" />
+                <PerformanceBar team="Software Support" value={92} color="bg-green-500" />
+                <PerformanceBar team="Hardware Support" value={78} color="bg-blue-500" />
               </div>
             </Card>
           </>
         )}
 
+        {/* Conditional Views */}
         {activeView === "createTicket" && <CreateTicketForm setActiveView={setActiveView} />}
         {activeView === "ViewUsers" && <ViewUsers setActiveView={setActiveView} />}
         {activeView === "CreateUser" && <CreateUser setActiveView={setActiveView} />}
         {activeView === "UserProfile" && <UserProfile setActiveView={setActiveView} />}
 
-        {tickets.some(t => t.id === activeView) && (
-          <TicketDetails ticket={tickets.find(t => t.id === activeView)} />
+        {tickets?.some(t => t.ticket_id === activeView) && (
+          <TicketDetails ticket={tickets.find(t => t.ticket_id === activeView)} />
         )}
-      </div>
-    </div>
-  );
-};
-
-const TicketDetails = ({ ticket }) => {
-  // Ensure responses and replies exist
-  const responses = ticket.responses || [];
-  const replies = ticket.replies || [];
-
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">{ticket.subject}</h1>
-        <span className={`text-sm px-3 py-1 rounded-full ${ticket.status === 'resolved' ? 'bg-green-100 text-green-800' :
-          ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-            'bg-yellow-100 text-yellow-800'
-          }`}>
-          {ticket.status}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <InfoCard label="Ticket ID" value={ticket.ticket_id} />
-        <InfoCard
-          label="Priority"
-          value={ticket.priority}
-          className={
-            ticket.priority === 'high' ? 'text-red-600' :
-              ticket.priority === 'medium' ? 'text-orange-600' :
-                'text-gray-600'
-          }
-        />
-        <InfoCard label="Category" value={ticket.category} />
-        <InfoCard label="Created" value={new Date(ticket.created_at).toLocaleString()} />
-        <InfoCard label="Created By" value={ticket.created_by} />
-        <InfoCard label="Assigned To" value={ticket.assigned_to || "Unassigned"} />
-      </div>
-
-      <Card title="Description">
-        <p className="text-sm text-gray-700">{ticket.issue}</p>
-      </Card>
-
-      <div className="mt-6">
-        <Card title="Responses">
-          {responses.length > 0 ? (
-            responses.map((response) => (
-              <ActivityLogItem
-                key={response.response_id}
-                user={response.responder}
-                action={response.response}
-                time={new Date(response.created_at).toLocaleString()}
-              />
-            ))
-          ) : (
-            <p className="text-sm text-gray-500">No responses yet.</p>
-          )}
-        </Card>
-      </div>
-
-      <div className="mt-6">
-        <Card title="Replies">
-          {replies.length > 0 ? (
-            replies.map((reply) => (
-              <ActivityLogItem
-                key={reply.reply_id}
-                user={reply.replier}
-                action={reply.reply}
-                time={new Date(reply.created_at).toLocaleString()}
-              />
-            ))
-          ) : (
-            <p className="text-sm text-gray-500">No replies yet.</p>
-          )}
-        </Card>
-      </div>
-
-      <div className="mt-6">
-        <Card title="Add Comment">
-          <textarea
-            rows="3"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
-            placeholder="Add your comment..."
-          ></textarea>
-          <div className="flex justify-end">
-            <button
-              type="button"
-              className="px-4 py-2 bg-indigo-700 rounded-md text-sm font-medium text-white hover:bg-indigo-800"
-            >
-              Post Comment
-            </button>
-          </div>
-        </Card>
       </div>
     </div>
   );
