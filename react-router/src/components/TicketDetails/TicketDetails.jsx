@@ -3,7 +3,10 @@ import Card from "../Card/Card";
 import InfoCard from "../InfoCard/InfoCard";
 import ActivityLogItem from "../ActivityLogItem/ActivityLogItem";
 
-const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose }) => {
+const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isAuthorized }) => {
+  console.log("TicketDetails received isAuthorized:", isAuthorized);
+  
+
   // State for modal visibility
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   
@@ -57,18 +60,24 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose }) =
           }`}>
             {ticket.status}
           </span>
-          <button
-            onClick={() => setIsAssignModalOpen(true)}
-            className="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
-          >
-            Assign Ticket
-          </button>
-          <button
-            onClick={handleSelfAssign}
-            className="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm rounded hover:bg-indigo-200"
-          >
-            Self Assign
-          </button>
+          
+          {/* Only show these buttons for authorized users */}
+          {isAuthorized && (
+            <>
+              <button
+                onClick={() => setIsAssignModalOpen(true)}
+                className="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
+              >
+                Assign Ticket
+              </button>
+              <button
+                onClick={handleSelfAssign}
+                className="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm rounded hover:bg-indigo-200"
+              >
+                Self Assign
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -146,18 +155,27 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose }) =
             >
               Post Comment
             </button>
-            <button
-              onClick={handleResolve}
-              className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700"
-            >
-              Mark as Resolved
-            </button>
-            <button
-              onClick={handleClose}
-              className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700"
-            >
-              Close Ticket
-            </button>
+            
+            {/* Only show these buttons for authorized users */}
+            {isAuthorized && (
+              <>
+                <button
+                  onClick={handleResolve}
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700"
+                >
+                  Mark as Resolved
+                </button>
+                </>
+                )}
+                <>
+                <button
+                  onClick={handleClose}
+                  className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700"
+                >
+                  Close Ticket
+                </button>
+              </>
+            
           </div>
         </Card>
       </div>

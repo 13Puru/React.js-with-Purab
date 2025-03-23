@@ -30,11 +30,17 @@ import ViewUsers from "../ViewUsers/ViewUsers";
 import CreateUser from "../CreateUser/CreateUser";
 import UserProfile from "../Profile/UserProfile";
 import TicketDetails from "../TicketDetails/TicketDetails"; // Assuming TicketDetails is in a separate file
+import withRoleAccess from "../../hoc/withRoleAccess";
 
-const Dashboard = () => {
+const TicketDetailsWithRole = withRoleAccess(TicketDetails);
+
+
+const Dashboard = ({ userRole }) => {
   const [activeView, setActiveView] = useState("dashboard");
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [role, setUserRole] = useState(localStorage.getItem("userRole"))
+
 
   // For sidebar
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -295,21 +301,25 @@ const Dashboard = () => {
           {/* Dropdown menu */}
           {(isUserMenuOpen || isCollapsed) && (
             <div className={`${isCollapsed ? 'px-1 pt-1' : 'pl-6 pb-2'} space-y-2`}>
-              <button
-                onClick={() => setActiveView("ViewUsers")}
-                className={`w-full text-left ${isCollapsed ? 'justify-center' : ''} flex items-center px-2 py-2 rounded-md hover:bg-gray-100 text-gray-700`}
-              >
-                <Users size={16} className={`text-gray-600 ${isCollapsed ? '' : 'mr-2'}`} />
-                {!isCollapsed && <span className="text-sm">View Users</span>}
-              </button>
+              {(role === "admin" || role === "agent") &&
+                <>
+                  <button
+                    onClick={() => setActiveView("ViewUsers")}
+                    className={`w-full text-left ${isCollapsed ? 'justify-center' : ''} flex items-center px-2 py-2 rounded-md hover:bg-gray-100 text-gray-700`}
+                  >
+                    <Users size={16} className={`text-gray-600 ${isCollapsed ? '' : 'mr-2'}`} />
+                    {!isCollapsed && <span className="text-sm">View Users</span>}
+                  </button>
+                  <button
+                    onClick={() => setActiveView("CreateUser")}
+                    className={`w-full text-left ${isCollapsed ? 'justify-center' : ''} flex items-center px-2 py-2 rounded-md hover:bg-gray-100 text-gray-700`}
+                  >
+                    <UserPlus size={16} className={`text-gray-600 ${isCollapsed ? '' : 'mr-2'}`} />
+                    {!isCollapsed && <span className="text-sm">Create User</span>}
+                  </button>
 
-              <button
-                onClick={() => setActiveView("CreateUser")}
-                className={`w-full text-left ${isCollapsed ? 'justify-center' : ''} flex items-center px-2 py-2 rounded-md hover:bg-gray-100 text-gray-700`}
-              >
-                <UserPlus size={16} className={`text-gray-600 ${isCollapsed ? '' : 'mr-2'}`} />
-                {!isCollapsed && <span className="text-sm">Create User</span>}
-              </button>
+                </>
+              }
 
               <button
                 onClick={() => setActiveView("UserProfile")}
@@ -491,7 +501,10 @@ const Dashboard = () => {
         {activeView === "UserProfile" && <UserProfile setActiveView={setActiveView} />}
 
         {tickets?.some(t => t.ticket_id === activeView) && (
-          <TicketDetails ticket={tickets.find(t => t.ticket_id === activeView)} />
+          <TicketDetailsWithRole
+            ticket={tickets.find(t => t.ticket_id === activeView)}
+            userRole={userRole || localStorage.getItem('userRole')} // Add fallbacks
+          />
         )}
       </div>
     </div>
