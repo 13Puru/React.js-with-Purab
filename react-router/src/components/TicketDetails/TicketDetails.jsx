@@ -3,11 +3,9 @@ import axios from "axios";
 import Card from "../Card/Card";
 import InfoCard from "../InfoCard/InfoCard";
 import ActivityLogItem from "../ActivityLogItem/ActivityLogItem";
-import { toast } from "react-toastify";
+import actionColors from "../Colors/actionColors";
 
 const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isAuthorized }) => {
-  
-
   // State for modal visibility
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   // Agents state declaration
@@ -28,9 +26,9 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
   const API_RESPOND = import.meta.env.VITE_RESPOND;
   const API_REPLY = import.meta.env.VITE_REPLY;
   const API_ASSIGN = import.meta.env.VITE_ASSIGN;
-  // Add missing API endpoints
-  const API_RESOLVE = import.meta.env.VITE_RESOLVE || "http://localhost:4000/api/ticket/resolve";
-  const API_CLOSE = import.meta.env.VITE_CLOSE || "http://localhost:4000/api/ticket/close";
+  const API_RESOLVE = import.meta.env.VITE_RESOLVE;
+  const API_CLOSE = import.meta.env.VITE_CLOSE;
+  const API_SELF_ASSIGN = import.meta.env.VITE_SELF_ASSIGN;
 
   // Update local ticket state when prop changes
   useEffect(() => {
@@ -49,16 +47,16 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
             Authorization: `Bearer ${token}`
           }
         });
-      
+
         // Access the users array from the response object
         const usersArray = response.data.users || [];
-        
+
         // Filter users with role "agent"
         const filteredAgents = usersArray.filter(user => user.role === "agent");
         setAgents(filteredAgents);
       } catch (error) {
         console.error("Error fetching agents:", error);
-        toast.error("Failed to fetch agents list");
+        alert("Failed to fetch agents list");
       } finally {
         setIsLoading(false);
       }
@@ -72,23 +70,23 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
   // Helper function to fetch updated ticket data
   const refreshTicketData = async () => {
     const token = localStorage.getItem("userToken");
-    
+
     try {
       const response = await axios.get(`${API_GET_TICKET}?ticket_id=${currentTicket.ticket_id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-      
+
       if (response.data && response.data.ticket) {
         setCurrentTicket(response.data.ticket);
         return response.data.ticket;
       }
     } catch (error) {
       console.error("Error refreshing ticket data:", error);
-      toast.error("Failed to refresh ticket data");
+      alert("Failed to refresh ticket data");
     }
-    
+
     return null;
   };
 
@@ -120,7 +118,7 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
       // Find agent name for UI update
       const assignedAgent = agents.find(agent => agent.user_id === agentId);
       const agentName = assignedAgent ? assignedAgent.username : "Unknown";
-      
+
       // Update local ticket state immediately for better UX
       setCurrentTicket(prevTicket => ({
         ...prevTicket,
@@ -129,21 +127,21 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
 
       // Refresh ticket data from server to get all updated fields
       const updatedTicket = await refreshTicketData();
-      
-      toast.success("Ticket assigned successfully!");
+
+      alert("Ticket assigned successfully!");
       setIsAssignModalOpen(false);
-      
+
       // Call the onAssign callback to update parent component
       if (onAssign) onAssign(currentTicket.ticket_id, agentId, updatedTicket);
     } catch (error) {
       console.error("Error assigning ticket:", error);
-      
+
       // Enhanced error handling
       if (error.response) {
         console.error("Error details:", error.response.data);
-        toast.error(`Failed to assign ticket: ${error.response.data.message || "Unknown error"}`);
+        alert(`Failed to assign ticket: ${error.response.data.message || "Unknown error"}`);
       } else {
-        toast.error("Failed to assign ticket.");
+        alert("Failed to assign ticket.");
       }
     }
   };
@@ -151,17 +149,35 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
   // Handle self assignment
   const handleSelfAssign = async () => {
     try {
-      const result = await onSelfAssign(currentTicket.ticket_id);
-      if (result) {
-        // Refresh ticket data after successful self-assignment
-        await refreshTicketData();
-        toast.success("Ticket self-assigned successfully!");
+      const token = localStorage.getItem('userToken'); // Get the auth token
+      if (!token) {
+        alert("User not authenticated. Please log in.");
+        return;
+      }
+
+      const response = await axios.post(
+        API_SELF_ASSIGN,
+        { ticket_id: currentTicket.ticket_id },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      if (response.data.success) {
+        await refreshTicketData(); // Refresh ticket details after assignment
+        alert("Ticket self-assigned successfully!");
+      } else {
+        alert(response.data.message || "Failed to self-assign ticket.");
       }
     } catch (error) {
       console.error("Error self-assigning ticket:", error);
-      toast.error("Failed to self-assign ticket");
+      alert("Failed to self-assign ticket. Please try again.");
     }
   };
+
 
   const handleResolve = async () => {
     const token = localStorage.getItem("userToken");
@@ -171,20 +187,20 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
         { ticket_id: currentTicket.ticket_id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-  
+
       if (response.data.success) {
-        toast.success("Ticket marked as resolved!");
+        alert("Ticket marked as resolved!");
         const updatedTicket = await refreshTicketData();
         if (onResolve) onResolve(currentTicket.ticket_id, updatedTicket);
       } else {
-        toast.error(response.data.message || "Failed to resolve ticket");
+        alert(response.data.message || "Failed to resolve ticket");
       }
     } catch (error) {
       console.error("Error resolving ticket:", error);
-      toast.error("Something went wrong. Please try again.");
+      alert("Something went wrong. Please try again.");
     }
   };
-  
+
   // Handle close ticket
   const handleClose = async () => {
     const token = localStorage.getItem("userToken");
@@ -194,17 +210,17 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
         { ticket_id: currentTicket.ticket_id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-  
+
       if (response.data.success) {
-        toast.success("Ticket closed successfully!");
+        alert("Ticket closed successfully!");
         const updatedTicket = await refreshTicketData();
         if (onClose) onClose(currentTicket.ticket_id, updatedTicket);
       } else {
-        toast.error(response.data.message || "Failed to close ticket");
+        alert(response.data.message || "Failed to close ticket");
       }
     } catch (error) {
       console.error("Error closing ticket:", error);
-      toast.error("Something went wrong. Please try again.");
+      alert("Something went wrong. Please try again.");
     }
   };
 
@@ -216,83 +232,83 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
   // Handle comment submission
   const handleAddComment = async () => {
     if (!commentText.trim()) {
-      toast.warning("Please enter a comment");
+      alert("Please enter a comment");
       return;
     }
-    
+
     const token = localStorage.getItem("userToken");
     const userRole = localStorage.getItem('userRole');
-    
+
     try {
       if (userRole === "user") {
         // For user role, submit a reply to a response
-        
+
         // Determine which response_id to use
         let responseIdToUse = selectedResponseId;
-        
+
         // If no response is selected, use the most recent one
         if (!responseIdToUse && responses.length > 0) {
           responseIdToUse = responses[0].response_id;
         }
-        
+
         // Validate that we have a response to reply to
         if (!responseIdToUse) {
-          toast.warning("No response available to reply to");
+          alert("No response available to reply to");
           return;
         }
-        
+
         console.log("Replying to response ID:", responseIdToUse);
-        
+
         // Handle reply submission
         await axios.post(
           API_REPLY,
-          { 
+          {
             response_id: responseIdToUse,
-            reply: commentText 
+            reply: commentText
           },
-          { 
+          {
             headers: { Authorization: `Bearer ${token}` }
           }
         );
-        
+
         // Reset selected response after submission
         setSelectedResponseId(null);
-        toast.success("Reply added successfully!");
+        alert("Reply added successfully!");
       } else {
         // Handle response submission for agents/admins
         await axios.post(
           API_RESPOND,
-          { 
+          {
             ticket_id: currentTicket.ticket_id,
-            response: commentText 
+            response: commentText
           },
-          { 
+          {
             headers: { Authorization: `Bearer ${token}` }
           }
         );
-        toast.success("Response added successfully!");
+        alert("Response added successfully!");
       }
 
       // Clear the textarea after submission
       setCommentText("");
-      
+
       // Refresh ticket data to show new comment
       await refreshTicketData();
-      
+
     } catch (error) {
       console.error("Error adding comment:", error);
       if (error.response) {
         console.error("Error details:", error.response.data);
-        toast.error(`Failed to add comment: ${error.response.data.message || "Unknown error"}`);
+        alert(`Failed to add comment: ${error.response.data.message || "Unknown error"}`);
       } else {
-        toast.error("Failed to add comment. Please try again.");
+        alert("Failed to add comment. Please try again.");
       }
     }
   };
 
   // Filter agents based on search term
-  const filteredAgents = agents.filter(agent => 
-    agent.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredAgents = agents.filter(agent =>
+    agent.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     agent.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     agent.username?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -302,15 +318,22 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">{currentTicket.subject}</h1>
         <div className="flex items-center gap-2">
-          <span className={`text-sm px-3 py-1 rounded-full ${
-            currentTicket.status === "resolved"
+          <span className={`text-sm px-3 py-1 rounded-full ${currentTicket.status === "resolved"
               ? "bg-green-100 text-green-800"
               : currentTicket.status === "in_progress"
                 ? "bg-blue-100 text-blue-800"
                 : "bg-yellow-100 text-yellow-800"
-          }`}>
+            }`}>
             {currentTicket.status}
           </span>
+
+          {/* Display last action */}
+          {currentTicket.last_action && (
+            <span className={`text-sm px-3 py-1 rounded-full ${actionColors[currentTicket.last_action] || 'bg-gray-100 text-gray-800'
+              }`}>
+              {currentTicket.last_action}
+            </span>
+          )}
 
           {/* Only show these buttons for authorized users */}
           {isAuthorized && (
@@ -373,11 +396,10 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
                   <div className="mt-1 ml-6">
                     <button
                       onClick={() => handleSelectResponse(response.response_id)}
-                      className={`text-xs px-2 py-1 rounded ${
-                        selectedResponseId === response.response_id
+                      className={`text-xs px-2 py-1 rounded ${selectedResponseId === response.response_id
                           ? "bg-indigo-100 text-indigo-700 font-medium"
                           : "text-gray-500 hover:text-indigo-600"
-                      }`}
+                        }`}
                     >
                       {selectedResponseId === response.response_id ? "Selected for Reply" : "Reply to this"}
                     </button>
@@ -409,7 +431,7 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
       </div>
 
       <div className="mt-6">
-        <Card title={localStorage.getItem('userRole') === "user" 
+        <Card title={localStorage.getItem('userRole') === "user"
           ? `Add Reply ${selectedResponseId ? "(Reply Selected)" : "(Will reply to latest response)"}`
           : "Add Response"}>
           <textarea
@@ -451,23 +473,21 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
                 Mark as Resolved
               </button>
             )}
-              
-           
-              <button
-                onClick={handleClose}
-                className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
-                disabled={currentTicket.status === "closed"}
-              >
-                Close Ticket
-              </button>
-            
+
+            <button
+              onClick={handleClose}
+              className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
+              disabled={currentTicket.status === "closed"}
+            >
+              Close Ticket
+            </button>
           </div>
         </Card>
       </div>
 
       {/* Professional Modal with Backdrop Filter */}
       {isAssignModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 overflow-y-auto"
           // Close modal when clicking outside
           onClick={() => setIsAssignModalOpen(false)}
@@ -475,12 +495,12 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             {/* Backdrop with blur effect */}
             <div className="fixed inset-0 transition-opacity bg-gray-800 bg-opacity-30 backdrop-blur-sm" aria-hidden="true"></div>
-            
+
             {/* Modal positioning */}
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
+
             {/* Actual modal */}
-            <div 
+            <div
               className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
               // Stop propagation to prevent closing when clicking inside modal
               onClick={(e) => e.stopPropagation()}
@@ -488,7 +508,7 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
               {/* Modal Header */}
               <div className="bg-gradient-to-r from-indigo-700 to-indigo-500 px-6 py-4 flex justify-between items-center border-b border-indigo-800">
                 <h2 className="text-lg font-semibold text-white">Assign Ticket #{currentTicket.ticket_id}</h2>
-                <button 
+                <button
                   onClick={() => setIsAssignModalOpen(false)}
                   className="text-white hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 rounded-full p-1"
                 >
@@ -497,7 +517,7 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
                   </svg>
                 </button>
               </div>
-              
+
               {/* Search Bar */}
               <div className="px-6 pt-5 pb-2">
                 <div className="relative">
@@ -515,7 +535,7 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
                   />
                 </div>
               </div>
-              
+
               {/* Agent List */}
               <div className="px-6 py-3">
                 {isLoading ? (
@@ -542,8 +562,8 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
                                 <p className="text-sm text-gray-500">{agent.email || "No email"}</p>
                               </div>
                             </div>
-                            <button 
-                              onClick={() => handleAssign(agent.user_id)} 
+                            <button
+                              onClick={() => handleAssign(agent.user_id)}
                               className="bg-indigo-600 text-white text-sm px-3 py-1 rounded-md hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                             >
                               Assign
@@ -559,11 +579,11 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
                   </div>
                 )}
               </div>
-              
+
               {/* Modal Footer */}
               <div className="px-6 py-4 bg-gray-50 flex justify-end border-t border-gray-200">
-                <button 
-                  onClick={() => setIsAssignModalOpen(false)} 
+                <button
+                  onClick={() => setIsAssignModalOpen(false)}
                   className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors shadow-sm"
                 >
                   Cancel

@@ -11,7 +11,7 @@ function Otp() {
 
     // Retrieve email on component mount
     useEffect(() => {
-        const storedEmail = localStorage.getItem("email");
+        const storedEmail = localStorage.getItem("userEmail");
         if (!storedEmail) {
             alert("No email found. Redirecting...");
             navigate("/register"); // Redirect to signup/login if missing

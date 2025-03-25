@@ -133,7 +133,7 @@ function Registration() {
             const result = await axios.post(API_REGISTER, { username, email, password });
 
             if (result.data.success) {
-                localStorage.setItem("email", email);
+                localStorage.setItem("userEmail", email);
                 navigate('/otp');
             } else {
                 setErrors({ general: result.data.message || 'Registration failed' });

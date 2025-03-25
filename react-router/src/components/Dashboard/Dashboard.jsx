@@ -31,6 +31,7 @@ import CreateUser from "../CreateUser/CreateUser";
 import UserProfile from "../Profile/UserProfile";
 import TicketDetails from "../TicketDetails/TicketDetails"; // Assuming TicketDetails is in a separate file
 import withRoleAccess from "../../hoc/withRoleAccess";
+import actionColors from "../Colors/actionColors";
 
 const TicketDetailsWithRole = withRoleAccess(TicketDetails);
 
@@ -56,6 +57,8 @@ const Dashboard = ({ userRole }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [tickets, setTickets] = useState([]);
+
+  const API_GET_TICKET = import.meta.env.VITE_GET_TICKET;
 
 
   const toggleSidebar = () => {
@@ -173,7 +176,7 @@ const Dashboard = ({ userRole }) => {
       // Get the auth token from wherever you store it (localStorage, context, etc.)
       const authToken = localStorage.getItem('userToken'); // Or use your auth management system
 
-      const response = await axios.get('http://localhost:4000/api/ticket/get-ticket', {
+      const response = await axios.get(API_GET_TICKET, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
@@ -376,7 +379,9 @@ const Dashboard = ({ userRole }) => {
                   >
                     {isCollapsed ? (
                       <div className="flex flex-col items-center">
-                        <span className={`h-2 w-2 rounded-full ${statusColors[ticket.status].replace('text-', 'bg-')}`}></span>
+                        <span
+                          className={`h-2 w-2 rounded-full ${statusColors[ticket.status].replace('text-', 'bg-')}`}
+                        ></span>
                         <span className="text-xs font-semibold text-gray-500 mt-1">
                           {ticket.ticket_id.substring(0, 3)}
                         </span>
@@ -390,10 +395,15 @@ const Dashboard = ({ userRole }) => {
                           </span>
                         </div>
                         <p className="text-sm font-medium text-gray-800 truncate">{ticket.subject}</p>
-                        <div className="mt-1">
+                        <div className="mt-1 flex justify-between items-center">
                           <span className={`text-xs px-2 py-1 rounded-full ${priorityColors[ticket.priority]}`}>
                             {ticket.priority}
                           </span>
+                          {ticket.last_action && (
+                            <span className={`text-xs px-2 py-1 rounded-full ${actionColors[ticket.last_action] || 'text-gray-600 bg-gray-100'}`}>
+                              {ticket.last_action}
+                            </span>
+                          )}
                         </div>
                       </>
                     )}

@@ -17,6 +17,7 @@ const UserProfile = ({ setActiveView }) => {
   const [error, setError] = useState(null);
   const API_GET_PROFILE = import.meta.env.VITE_GET_PROFILE;
   const API_GET_TICKET_STAT = import.meta.env.VITE_GET_TICKET_STAT;
+  const API_SEND_OTP = import.meta.env.VITE_SENT_OTP;
 
   useEffect(() => {
     // Fetch profile data from API
@@ -152,10 +153,11 @@ const UserProfile = ({ setActiveView }) => {
 
   const handleVerifyEmail = async () => {
     try {
-      const userId = localStorage.getItem('userId');
-      const token = localStorage.getItem('userToken');
-      
-      await axios.post(`http://localhost:4000/api/user/send-verification-email`, 
+      const userId = localStorage.getItem("userId");
+      const token = localStorage.getItem("userToken");
+  
+      await axios.post(
+        API_SEND_OTP,
         { userId },
         {
           headers: {
@@ -164,8 +166,9 @@ const UserProfile = ({ setActiveView }) => {
           withCredentials: true,
         }
       );
-      
+  
       alert("Verification email sent. Please check your inbox.");
+      navigate("/otp"); // Navigate to OTP page after success
     } catch (err) {
       console.error("Error sending verification email:", err);
       alert("Failed to send verification email. Please try again.");
@@ -350,17 +353,6 @@ const UserProfile = ({ setActiveView }) => {
                       : 0}%
                   </p>
                 </div>
-              </div>
-              
-              <div className="mt-6">
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="w-full px-4 py-2 bg-gray-100 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 flex items-center justify-center"
-                  onClick={() => setActiveView("tickets")}
-                >
-                  View All Tickets
-                </motion.button>
               </div>
             </div>
           </Card>
