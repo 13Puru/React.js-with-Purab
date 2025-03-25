@@ -430,60 +430,62 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
         </Card>
       </div>
 
-      <div className="mt-6">
-        <Card title={localStorage.getItem('userRole') === "user"
-          ? `Add Reply ${selectedResponseId ? "(Reply Selected)" : "(Will reply to latest response)"}`
-          : "Add Response"}>
-          <textarea
-            rows="3"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
-            placeholder={localStorage.getItem('userRole') === "user" ? "Add your reply..." : "Add your response..."}
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-          ></textarea>
-          <div className="flex justify-end gap-2">
-            {localStorage.getItem('userRole') === "user" ? (
-              <button
-                type="button"
-                onClick={handleAddComment}
-                className="px-4 py-2 bg-indigo-700 rounded-md text-sm font-medium text-white hover:bg-indigo-800 transition-colors"
-                disabled={responses.length === 0}
-              >
-                Add Reply
-              </button>
-            ) : (
-              /* Only show these buttons for authorized users */
-              isAuthorized && (
+      {currentTicket.last_action !== "closed" && (
+        <div className="mt-6">
+          <Card title={localStorage.getItem('userRole') === "user"
+            ? `Add Reply ${selectedResponseId ? "(Reply Selected)" : "(Will reply to latest response)"}`
+            : "Add Response"}>
+            <textarea
+              rows="3"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
+              placeholder={localStorage.getItem('userRole') === "user" ? "Add your reply..." : "Add your response..."}
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+            ></textarea>
+            <div className="flex justify-end gap-2">
+              {localStorage.getItem('userRole') === "user" ? (
                 <button
                   type="button"
                   onClick={handleAddComment}
                   className="px-4 py-2 bg-indigo-700 rounded-md text-sm font-medium text-white hover:bg-indigo-800 transition-colors"
+                  disabled={responses.length === 0}
                 >
-                  Add Response
+                  Add Reply
                 </button>
-              )
-            )}
+              ) : (
+                /* Only show these buttons for authorized users */
+                isAuthorized && (
+                  <button
+                    type="button"
+                    onClick={handleAddComment}
+                    className="px-4 py-2 bg-indigo-700 rounded-md text-sm font-medium text-white hover:bg-indigo-800 transition-colors"
+                  >
+                    Add Response
+                  </button>
+                )
+              )}
 
-            {isAuthorized && (
+              {isAuthorized && (
+                <button
+                  onClick={handleResolve}
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
+                  disabled={currentTicket.status === "resolved"}
+                >
+                  Mark as Resolved
+                </button>
+              )}
+
               <button
-                onClick={handleResolve}
-                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
-                disabled={currentTicket.status === "resolved"}
+                onClick={handleClose}
+                className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
+                disabled={currentTicket.status === "closed"}
               >
-                Mark as Resolved
+                Close Ticket
               </button>
-            )}
-
-            <button
-              onClick={handleClose}
-              className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
-              disabled={currentTicket.status === "closed"}
-            >
-              Close Ticket
-            </button>
-          </div>
-        </Card>
-      </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Professional Modal with Backdrop Filter */}
       {isAssignModalOpen && (

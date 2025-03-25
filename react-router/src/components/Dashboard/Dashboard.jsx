@@ -15,38 +15,44 @@ import {
   ChevronDown,
   ChevronUp
 } from "lucide-react";
+
+// Import necessary components
 import Card from "../Card/Card";
 import { CreateTicketForm } from "../Create-Ticket/CreateTicketForm";
 import StatsCard from "../StatsCard/StatsCard";
 import ActivityItem from "../ActivityItem/ActivityItem";
 import PriorityItem from "../PriorityItem/PriorityItem";
 import PerformanceBar from "../PerformanceBar/PerformanceBar";
-import InfoCard from "../InfoCard/InfoCard";
-import ActivityLogItem from "../ActivityLogItem/ActivityLogItem";
-import statusColors from "../Colors/StatusColors";
-import priorityColors from "../Colors/priorityColors";
-import tickets from "../SampleTickets/Tickets";
 import ViewUsers from "../ViewUsers/ViewUsers";
 import CreateUser from "../CreateUser/CreateUser";
 import UserProfile from "../Profile/UserProfile";
-import TicketDetails from "../TicketDetails/TicketDetails"; // Assuming TicketDetails is in a separate file
+import TicketDetails from "../TicketDetails/TicketDetails";
+
+// Import utility components and helpers
 import withRoleAccess from "../../hoc/withRoleAccess";
+import statusColors from "../Colors/StatusColors";
+import priorityColors from "../Colors/priorityColors";
 import actionColors from "../Colors/actionColors";
 
+// Wrap TicketDetails with role-based access control
 const TicketDetailsWithRole = withRoleAccess(TicketDetails);
 
-
 const Dashboard = ({ userRole }) => {
-  const [activeView, setActiveView] = useState("dashboard");
+  // Navigation and routing
   const navigate = useNavigate();
+
+  // State management
+  const [activeView, setActiveView] = useState("dashboard");
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [role, setUserRole] = useState(localStorage.getItem("userRole"))
-
-
-  // For sidebar
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [role, setUserRole] = useState(localStorage.getItem("userRole"));
 
-  // Added missing state declarations
+  // Ticket-related states
+  const [tickets, setTickets] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Dashboard stats states
   const [ticketStats, setTicketStats] = useState({
     open: { value: "0", trend: "0 from yesterday", trendUp: false },
     closed: { value: "0", trend: "0 from last week", trendUp: false },
@@ -54,128 +60,14 @@ const Dashboard = ({ userRole }) => {
   });
   const [priorityIssues, setPriorityIssues] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [tickets, setTickets] = useState([]);
 
+  // API endpoint from environment variables
   const API_GET_TICKET = import.meta.env.VITE_GET_TICKET;
 
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
-
-  const toggleUserMenu = () => {
-    setIsUserMenuOpen(!isUserMenuOpen);
-  };
-
-  const navigateTo = (path) => {
-    navigate(path);
-  };
-
-  // Helper function to generate activity description
-  const getActivityDescription = (ticket) => {
-    if (ticket.lastAction === 'assignment') {
-      return `Assigned to ${ticket.assignedTo}`;
-    } else if (ticket.lastAction === 'status_change') {
-      return `Status changed to ${ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}`;
-    } else if (ticket.lastAction === 'comment') {
-      return 'New comment added';
-    }
-    return 'Updated';
-  };
-
-  // Helper function to calculate relative time
-  const getRelativeTime = (timestamp) => {
-    const now = new Date();
-    const ticketTime = new Date(timestamp);
-    const diffMinutes = Math.floor((now - ticketTime) / (1000 * 60));
-
-    if (diffMinutes < 60) {
-      return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
-    } else if (diffMinutes < 1440) {
-      const hours = Math.floor(diffMinutes / 60);
-      return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
-    } else {
-      const days = Math.floor(diffMinutes / 1440);
-      return `${days} day${days !== 1 ? 's' : ''} ago`;
-    }
-  };
-
-  // fetch ticket status
-  // const fetchTicketStats = async () => {
-  //   try {
-  //     setIsLoading(true);
-  //     setError(null);
-
-  //     const token = localStorage.getItem("userToken");
-  //     if (!token) throw new Error("Unauthorized: No token found");
-
-  //     const response = await axios.get("http://localhost:4000/api/ticket/fetch-ticket-details", {
-  //       headers: { Authorization: `Bearer ${token}` },
-  //     });
-
-  //     console.log("API Response:", response.data); // Debugging: Check API response
-
-  //     if (!response.data || typeof response.data !== "object" || Array.isArray(response.data)) {
-  //       throw new Error("Invalid API response: Expected an object but got an array.");
-  //     }
-
-  //     const {
-  //       stats = {}, 
-  //       priorityIssues = [], 
-  //       recentActivities = [], 
-  //       tickets = [] 
-  //     } = response.data;
-
-  //     setTicketStats({
-  //       open: {
-  //         value: stats.openTickets?.toString() || "0",
-  //         trend: stats.openTrend ? `${stats.openTrend > 0 ? "+" : ""}${stats.openTrend} from yesterday` : "N/A",
-  //         trendUp: stats.openTrend < 0
-  //       },
-  //       closed: {
-  //         value: stats.closedTickets?.toString() || "0",
-  //         trend: stats.closedTrend ? `${stats.closedTrend > 0 ? "+" : ""}${stats.closedTrend} from last week` : "N/A",
-  //         trendUp: stats.closedTrend > 0
-  //       },
-  //       resolved: {
-  //         value: stats.resolvedThisWeek?.toString() || "0",
-  //         trend: stats.resolvedTrend ? `${stats.resolvedTrend > 0 ? "+" : ""}${stats.resolvedTrend} from last week` : "N/A",
-  //         trendUp: stats.resolvedTrend > 0
-  //       }
-  //     });
-
-  //     setPriorityIssues(Array.isArray(priorityIssues) ? priorityIssues : []);
-  //     setRecentActivity(
-  //       Array.isArray(recentActivities)
-  //         ? recentActivities.map(ticket => ({
-  //             title: ticket?.title || "No title",
-  //             description: ticket?.description || "No details",
-  //             time: ticket?.updatedAt ? new Date(ticket.updatedAt).toLocaleString() : "Unknown time",
-  //           }))
-  //         : []
-  //     );
-  //     setTickets(Array.isArray(tickets) ? tickets : []);
-
-  //   } catch (error) {
-  //     console.error("Error fetching ticket stats:", error.message);
-  //     setError("Failed to load ticket statistics. Please try again later.");
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-  // Add useEffect to fetch ticket stats when component mounts
-  // useEffect(() => {
-  //   fetchTicketStats();
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []);
-
+  // Fetch tickets from API
   const fetchTickets = async () => {
     try {
-      // Get the auth token from wherever you store it (localStorage, context, etc.)
-      const authToken = localStorage.getItem('userToken'); // Or use your auth management system
-
+      const authToken = localStorage.getItem('userToken');
       const response = await axios.get(API_GET_TICKET, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -183,54 +75,101 @@ const Dashboard = ({ userRole }) => {
         }
       });
 
-      return response.data;
+      return response.data.tickets || [];
     } catch (error) {
       console.error('Error fetching tickets:', error);
-      throw error;
+      throw new Error(
+        error.response?.status === 401 
+          ? 'Authentication failed. Please log in again.' 
+          : 'Failed to load tickets. Please try again later.'
+      );
     }
   };
 
+  // Fetch tickets on component mount and set up polling
   useEffect(() => {
     const getTickets = async () => {
       try {
         setIsLoading(true);
         const ticketData = await fetchTickets();
+        
+        // Update tickets
+        setTickets(ticketData);
 
-        console.log("Fetched Tickets:", ticketData); // Debugging log
+        // Optional: Update other dashboard stats (you might want to create separate API calls)
+        const openTickets = ticketData.filter(ticket => ticket.status === 'in_progress');
+        const closedTickets = ticketData.filter(ticket => ticket.last_action === 'closed');
+        const resolvedTickets = ticketData.filter(ticket => ticket.status === 'resolved');
 
-        // Extract the tickets array correctly
-        setTickets(ticketData.tickets || []);
+        setTicketStats({
+          open: { 
+            value: openTickets.length.toString(), 
+            trend: `${openTickets.length} from yesterday`, 
+            trendUp: true 
+          },
+          closed: { 
+            value: closedTickets.length.toString(), 
+            trend: `${closedTickets.length} from last week`, 
+            trendUp: false 
+          },
+          resolved: { 
+            value: resolvedTickets.length.toString(), 
+            trend: `${resolvedTickets.length} from last week`, 
+            trendUp: true 
+          }
+        });
+
+        // Example of setting priority issues and recent activity
+        setPriorityIssues(
+          ticketData
+            .filter(ticket => ticket.priority === 'high')
+            .map(ticket => ({
+              id: ticket.ticket_id,
+              title: ticket.subject,
+              department: ticket.department,
+              priority: ticket.priority
+            }))
+        );
+
+        setRecentActivity(
+          ticketData
+            .slice(0, 5)
+            .map(ticket => ({
+              title: `Ticket ${ticket.ticket_id}`,
+              description: ticket.subject,
+              time: new Date(ticket.created_at).toLocaleString()
+            }))
+        );
 
         setError(null);
       } catch (err) {
-        if (err.response && err.response.status === 401) {
-          setError('Authentication failed. Please log in again.');
-        } else {
-          setError('Failed to load tickets. Please try again later.');
-        }
-        console.error(err);
+        setError(err.message);
       } finally {
         setIsLoading(false);
       }
     };
 
-
-
     getTickets();
-
-    // Optional: Set up polling for real-time updates
-    // const pollingInterval = setInterval(getTickets, 30000); // Poll every 30 seconds
-    // return () => clearInterval(pollingInterval);
+    const pollingInterval = setInterval(getTickets, 30000);
+    return () => clearInterval(pollingInterval);
   }, []);
 
-  const [activeViewLocal, setActiveViewLocal] = useState("dashboard");
+  // Toggle sidebar collapse
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+  };
 
-  // Handler to update both local and parent state
+  // Toggle user menu
+  const toggleUserMenu = () => {
+    setIsUserMenuOpen(!isUserMenuOpen);
+  };
+
+  // Handle ticket selection
   const handleTicketSelect = (ticketId) => {
-    setActiveViewLocal(ticketId);
     setActiveView(ticketId);
   };
 
+  // Render loading state
   if (isLoading) {
     return (
       <div className="flex-grow flex items-center justify-center">
@@ -239,6 +178,7 @@ const Dashboard = ({ userRole }) => {
     );
   }
 
+  // Render error state
   if (error) {
     return (
       <div className="flex-grow flex items-center justify-center">
@@ -251,7 +191,7 @@ const Dashboard = ({ userRole }) => {
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <div className={`${isCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out relative`}>
-        {/* Toggle button */}
+        {/* Sidebar toggle button */}
         <button
           onClick={toggleSidebar}
           className="absolute -right-3 top-16 bg-white border border-gray-200 rounded-full p-1 shadow-md hover:bg-gray-50 z-10"
@@ -263,6 +203,7 @@ const Dashboard = ({ userRole }) => {
           }
         </button>
 
+        {/* App logo */}
         <div className="p-4 border-b border-gray-200 flex items-center">
           <h1 className={`text-xl font-bold text-indigo-700 ${isCollapsed ? 'hidden' : 'block'}`}>StackIT</h1>
           {isCollapsed && <h1 className="text-xl font-bold text-indigo-700">S</h1>}
@@ -301,10 +242,10 @@ const Dashboard = ({ userRole }) => {
             )}
           </button>
 
-          {/* Dropdown menu */}
+          {/* User Management Dropdown */}
           {(isUserMenuOpen || isCollapsed) && (
             <div className={`${isCollapsed ? 'px-1 pt-1' : 'pl-6 pb-2'} space-y-2`}>
-              {(role === "admin" || role === "agent") &&
+              {(role === "admin" || role === "agent") && (
                 <>
                   <button
                     onClick={() => setActiveView("ViewUsers")}
@@ -320,9 +261,8 @@ const Dashboard = ({ userRole }) => {
                     <UserPlus size={16} className={`text-gray-600 ${isCollapsed ? '' : 'mr-2'}`} />
                     {!isCollapsed && <span className="text-sm">Create User</span>}
                   </button>
-
                 </>
-              }
+              )}
 
               <button
                 onClick={() => setActiveView("UserProfile")}
@@ -334,7 +274,6 @@ const Dashboard = ({ userRole }) => {
             </div>
           )}
         </div>
-        <hr className="mb-3 border border-[#432dd7]" />
 
         {/* Search Bar */}
         {!isCollapsed && (
@@ -350,22 +289,8 @@ const Dashboard = ({ userRole }) => {
           </div>
         )}
 
-        {/* Minimized Search */}
-        {isCollapsed && (
-          <div className="px-4 mb-4">
-            <button className="w-full p-2 border border-gray-300 rounded-md flex items-center justify-center hover:bg-gray-50">
-              <Search size={16} className="text-gray-400" />
-            </button>
-          </div>
-        )}
-
         {/* Ticket List */}
         <div className="flex-grow overflow-y-auto">
-          {!isCollapsed && (
-            <h2 className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              All Tickets
-            </h2>
-          )}
           {tickets.length === 0 ? (
             <p className="text-center py-4 text-gray-500">No tickets found</p>
           ) : (
@@ -374,8 +299,7 @@ const Dashboard = ({ userRole }) => {
                 <li key={ticket.ticket_id}>
                   <button
                     onClick={() => handleTicketSelect(ticket.ticket_id)}
-                    className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${activeView === ticket.ticket_id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''
-                      }`}
+                    className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${activeView === ticket.ticket_id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}
                   >
                     {isCollapsed ? (
                       <div className="flex flex-col items-center">
@@ -413,17 +337,15 @@ const Dashboard = ({ userRole }) => {
             </ul>
           )}
         </div>
-
       </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {activeView === "dashboard" && (
           <>
-            {/* Header */}
+            {/* Dashboard Header */}
             <div className="w-full flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-              {error && <div className="text-red-500">{error}</div>}
             </div>
 
             {/* Stats Cards */}
@@ -513,7 +435,7 @@ const Dashboard = ({ userRole }) => {
         {tickets?.some(t => t.ticket_id === activeView) && (
           <TicketDetailsWithRole
             ticket={tickets.find(t => t.ticket_id === activeView)}
-            userRole={userRole || localStorage.getItem('userRole')} // Add fallbacks
+            userRole={userRole || localStorage.getItem('userRole')}
           />
         )}
       </div>
