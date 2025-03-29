@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-
+import { publishAuthChange } from '../Header/Header'; // Update this path based on your project structure
 
 function Login() {
     const storedEmail = localStorage.getItem('userEmail');
@@ -40,12 +40,22 @@ function Login() {
                     return;
                 }
     
+                // Store user data in localStorage
                 localStorage.setItem('userToken', token);
                 localStorage.setItem('userEmail', email);
                 localStorage.setItem('username', username);
                 localStorage.setItem('userRole', role); 
                 localStorage.setItem('userId', user_id);
-    
+                
+                // Handle remember me functionality
+                if (!rememberMe) {
+                    localStorage.removeItem('userEmail');
+                }
+                
+                // Notify Header component to refresh
+                publishAuthChange();
+                
+                // Navigate to dashboard
                 navigate('/dashboard');
             } else {
                 setError(result.data.message || 'Login failed. Please try again.');
@@ -61,10 +71,6 @@ function Login() {
         }
     };
     
-    
-    
-    
-
     // Toggle password visibility
     const togglePasswordVisibility = () => {
         setShowPassword((prev) => !prev);
@@ -154,7 +160,7 @@ function Login() {
                             <button
                                 type="button"
                                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                onClick={() => setShowPassword(!showPassword)}
+                                onClick={togglePasswordVisibility}
                             >
                                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
