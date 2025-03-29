@@ -193,8 +193,11 @@ const Dashboard = ({ userRole }) => {
   // Render loading state
   if (isLoading) {
     return (
-      <div className="flex-grow flex items-center justify-center">
-        <p className="text-gray-500">Loading tickets...</p>
+      <div className="flex-grow flex items-center justify-center py-8">
+        <div className="flex flex-col items-center gap-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-700"></div>
+          <p className="text-indigo-600 font-medium">Loading tickets...</p>
+        </div>
       </div>
     );
   }
