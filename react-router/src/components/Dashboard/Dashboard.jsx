@@ -13,7 +13,8 @@ import {
   UserPlus,
   UserCog,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Filter
 } from "lucide-react";
 
 // Import necessary components
@@ -52,6 +53,13 @@ const Dashboard = ({ userRole }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Ticket filtering states
+  const [ticketFilter, setTicketFilter] = useState({
+    status: '',
+    priority: '',
+    searchQuery: ''
+  });
+
   // Dashboard stats states
   const [ticketStats, setTicketStats] = useState({
     open: { value: "0", trend: "0 from yesterday", trendUp: false },
@@ -79,8 +87,8 @@ const Dashboard = ({ userRole }) => {
     } catch (error) {
       console.error('Error fetching tickets:', error);
       throw new Error(
-        error.response?.status === 401 
-          ? 'Authentication failed. Please log in again.' 
+        error.response?.status === 401
+          ? 'Authentication failed. Please log in again.'
           : 'Failed to load tickets. Please try again later.'
       );
     }
@@ -92,30 +100,30 @@ const Dashboard = ({ userRole }) => {
       try {
         setIsLoading(true);
         const ticketData = await fetchTickets();
-        
+
         // Update tickets
         setTickets(ticketData);
 
-        // Optional: Update other dashboard stats (you might want to create separate API calls)
+        // Optional: Update dashboard stats
         const openTickets = ticketData.filter(ticket => ticket.status === 'in_progress');
         const closedTickets = ticketData.filter(ticket => ticket.last_action === 'closed');
         const resolvedTickets = ticketData.filter(ticket => ticket.status === 'resolved');
 
         setTicketStats({
-          open: { 
-            value: openTickets.length.toString(), 
-            trend: `${openTickets.length} from yesterday`, 
-            trendUp: true 
+          open: {
+            value: openTickets.length.toString(),
+            trend: `${openTickets.length} from yesterday`,
+            trendUp: true
           },
-          closed: { 
-            value: closedTickets.length.toString(), 
-            trend: `${closedTickets.length} from last week`, 
-            trendUp: false 
+          closed: {
+            value: closedTickets.length.toString(),
+            trend: `${closedTickets.length} from last week`,
+            trendUp: false
           },
-          resolved: { 
-            value: resolvedTickets.length.toString(), 
-            trend: `${resolvedTickets.length} from last week`, 
-            trendUp: true 
+          resolved: {
+            value: resolvedTickets.length.toString(),
+            trend: `${resolvedTickets.length} from last week`,
+            trendUp: true
           }
         });
 
@@ -126,7 +134,6 @@ const Dashboard = ({ userRole }) => {
             .map(ticket => ({
               id: ticket.ticket_id,
               title: ticket.subject,
-              department: ticket.department,
               priority: ticket.priority
             }))
         );
@@ -150,8 +157,9 @@ const Dashboard = ({ userRole }) => {
     };
 
     getTickets();
-    const pollingInterval = setInterval(getTickets, 30000);
-    return () => clearInterval(pollingInterval);
+    // Uncomment for polling
+    // const pollingInterval = setInterval(getTickets, 20000);
+    // return () => clearInterval(pollingInterval);
   }, []);
 
   // Toggle sidebar collapse
@@ -167,6 +175,19 @@ const Dashboard = ({ userRole }) => {
   // Handle ticket selection
   const handleTicketSelect = (ticketId) => {
     setActiveView(ticketId);
+  };
+
+  // Filter function for tickets
+  const filterTickets = () => {
+    return tickets.filter(ticket => {
+      const matchesStatus = !ticketFilter.status || ticket.status === ticketFilter.status;
+      const matchesPriority = !ticketFilter.priority || ticket.priority === ticketFilter.priority;
+      const matchesSearch = !ticketFilter.searchQuery ||
+        ticket.subject.toLowerCase().includes(ticketFilter.searchQuery.toLowerCase()) ||
+        ticket.ticket_id.toLowerCase().includes(ticketFilter.searchQuery.toLowerCase());
+
+      return matchesStatus && matchesPriority && matchesSearch;
+    });
   };
 
   // Render loading state
@@ -186,6 +207,137 @@ const Dashboard = ({ userRole }) => {
       </div>
     );
   }
+
+  // Filter dropdown component
+  const FilterDropdown = () => {
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    const handleFilterChange = (filterType, value) => {
+      setTicketFilter(prev => ({
+        ...prev,
+        [filterType]: value
+      }));
+    };
+
+    const resetFilters = () => {
+      setTicketFilter({
+        status: '',
+        priority: '',
+        searchQuery: ''
+      });
+    };
+
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setIsFilterOpen(!isFilterOpen)}
+          className={`w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-gray-100 ${isFilterOpen ? 'bg-gray-100' : ''}`}
+        >
+          <div className="flex items-center">
+            <Filter size={16} className="mr-2 text-gray-600" />
+            <span>Ticket Filters</span>
+          </div>
+          {isFilterOpen ? (
+            <ChevronUp size={16} className="text-gray-600" />
+          ) : (
+            <ChevronDown size={16} className="text-gray-600" />
+          )}
+        </button>
+
+        {isFilterOpen && (
+          <div className="absolute z-10 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-4 mt-2">
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={ticketFilter.status}
+                onChange={(e) => handleFilterChange('status', e.target.value)}
+                className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">All Statuses</option>
+                <option value="yet_to_open">Yet-to-Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <select
+                value={ticketFilter.priority}
+                onChange={(e) => handleFilterChange('priority', e.target.value)}
+                className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">All Priorities</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+
+            <div className="flex justify-between">
+              <button
+                onClick={resetFilters}
+                className="text-sm text-indigo-600 hover:text-indigo-800"
+              >
+                Reset Filters
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render ticket list with filtering
+  const renderTicketList = () => {
+    const filteredTickets = filterTickets();
+
+    return filteredTickets.length === 0 ? (
+      <p className="text-center py-4 text-gray-500">No tickets found</p>
+    ) : (
+      <ul className="divide-y divide-gray-200">
+        {filteredTickets.map((ticket) => (
+          <li key={ticket.ticket_id}>
+            <button
+              onClick={() => handleTicketSelect(ticket.ticket_id)}
+              className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${activeView === ticket.ticket_id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}
+            >
+              {isCollapsed ? (
+                <div className="flex flex-col items-center">
+                  <span
+                    className={`h-2 w-2 rounded-full ${statusColors[ticket.status].replace('text-', 'bg-')}`}
+                  ></span>
+                  <span className="text-xs font-semibold text-gray-500 mt-1">
+                    {ticket.ticket_id.substring(0, 3)}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-gray-500">{ticket.ticket_id}</span>
+                    <span className={`text-xs px-2 py-1 rounded-full ${statusColors[ticket.status]}`}>
+                      {ticket.status}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-gray-800 truncate">{ticket.subject}</p>
+                  <div className="mt-1 flex justify-between items-center">
+                    <span className={`text-xs px-2 py-1 rounded-full ${priorityColors[ticket.priority]}`}>
+                      {ticket.priority}
+                    </span>
+                    {ticket.last_action && (
+                      <span className={`text-xs px-2 py-1 rounded-full ${actionColors[ticket.last_action] || 'text-gray-600 bg-gray-100'}`}>
+                        {ticket.last_action}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -275,67 +427,29 @@ const Dashboard = ({ userRole }) => {
           )}
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar with Filters */}
         {!isCollapsed && (
-          <div className="px-4 mb-4">
+          <div className="px-4 mb-4 space-y-2">
             <div className="relative">
               <input
                 type="text"
                 placeholder="Search tickets..."
+                value={ticketFilter.searchQuery}
+                onChange={(e) => setTicketFilter(prev => ({
+                  ...prev,
+                  searchQuery: e.target.value
+                }))}
                 className="w-full px-3 py-2 pl-9 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
             </div>
+            <FilterDropdown />
           </div>
         )}
 
         {/* Ticket List */}
         <div className="flex-grow overflow-y-auto">
-          {tickets.length === 0 ? (
-            <p className="text-center py-4 text-gray-500">No tickets found</p>
-          ) : (
-            <ul className="divide-y divide-gray-200">
-              {tickets.map((ticket) => (
-                <li key={ticket.ticket_id}>
-                  <button
-                    onClick={() => handleTicketSelect(ticket.ticket_id)}
-                    className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${activeView === ticket.ticket_id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}
-                  >
-                    {isCollapsed ? (
-                      <div className="flex flex-col items-center">
-                        <span
-                          className={`h-2 w-2 rounded-full ${statusColors[ticket.status].replace('text-', 'bg-')}`}
-                        ></span>
-                        <span className="text-xs font-semibold text-gray-500 mt-1">
-                          {ticket.ticket_id.substring(0, 3)}
-                        </span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-semibold text-gray-500">{ticket.ticket_id}</span>
-                          <span className={`text-xs px-2 py-1 rounded-full ${statusColors[ticket.status]}`}>
-                            {ticket.status}
-                          </span>
-                        </div>
-                        <p className="text-sm font-medium text-gray-800 truncate">{ticket.subject}</p>
-                        <div className="mt-1 flex justify-between items-center">
-                          <span className={`text-xs px-2 py-1 rounded-full ${priorityColors[ticket.priority]}`}>
-                            {ticket.priority}
-                          </span>
-                          {ticket.last_action && (
-                            <span className={`text-xs px-2 py-1 rounded-full ${actionColors[ticket.last_action] || 'text-gray-600 bg-gray-100'}`}>
-                              {ticket.last_action}
-                            </span>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {renderTicketList()}
         </div>
       </div>
 
@@ -436,6 +550,7 @@ const Dashboard = ({ userRole }) => {
           <TicketDetailsWithRole
             ticket={tickets.find(t => t.ticket_id === activeView)}
             userRole={userRole || localStorage.getItem('userRole')}
+            setActiveView={setActiveView}  // Add this line
           />
         )}
       </div>

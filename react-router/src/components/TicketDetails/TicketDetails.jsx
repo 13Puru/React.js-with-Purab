@@ -4,8 +4,9 @@ import Card from "../Card/Card";
 import InfoCard from "../InfoCard/InfoCard";
 import ActivityLogItem from "../ActivityLogItem/ActivityLogItem";
 import actionColors from "../Colors/actionColors";
+import { ArrowLeft } from "lucide-react";
 
-const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isAuthorized }) => {
+const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isAuthorized,  setActiveView }) => {
   // State for modal visibility
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   // Agents state declaration
@@ -316,13 +317,27 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
+      <button
+          onClick={() => {
+            try {
+              setActiveView("dashboard");
+            } catch (error) {
+              console.error("Error setting active view:", error);
+              // Fallback mechanism if setActiveView fails
+              alert("Unable to navigate back to dashboard");
+            }
+          }}
+          className="mr-4 p-2 rounded-full hover:bg-gray-100"
+        >
+          <ArrowLeft size={20} className="text-gray-700" />
+        </button>
         <h1 className="text-2xl font-bold text-gray-800">{currentTicket.subject}</h1>
         <div className="flex items-center gap-2">
           <span className={`text-sm px-3 py-1 rounded-full ${currentTicket.status === "resolved"
-              ? "bg-green-100 text-green-800"
-              : currentTicket.status === "in_progress"
-                ? "bg-blue-100 text-blue-800"
-                : "bg-yellow-100 text-yellow-800"
+            ? "bg-green-100 text-green-800"
+            : currentTicket.status === "in_progress"
+              ? "bg-blue-100 text-blue-800"
+              : "bg-yellow-100 text-yellow-800"
             }`}>
             {currentTicket.status}
           </span>
@@ -397,8 +412,8 @@ const TicketDetails = ({ ticket, onAssign, onSelfAssign, onResolve, onClose, isA
                     <button
                       onClick={() => handleSelectResponse(response.response_id)}
                       className={`text-xs px-2 py-1 rounded ${selectedResponseId === response.response_id
-                          ? "bg-indigo-100 text-indigo-700 font-medium"
-                          : "text-gray-500 hover:text-indigo-600"
+                        ? "bg-indigo-100 text-indigo-700 font-medium"
+                        : "text-gray-500 hover:text-indigo-600"
                         }`}
                     >
                       {selectedResponseId === response.response_id ? "Selected for Reply" : "Reply to this"}
