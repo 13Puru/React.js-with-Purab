@@ -77,6 +77,14 @@ export default function Header({ setActiveView }) {
                         >
                             Contact Us
                         </NavLink>
+                        <NavLink
+                            to='/about'
+                            className={({ isActive }) =>
+                                `font-medium transition-colors duration-200 ${isActive ? "text-indigo-700" : "text-gray-600"} hover:text-indigo-600`
+                            }
+                        >
+                            About
+                        </NavLink>
                     </div>
                     
                     {/* Desktop Buttons */}
