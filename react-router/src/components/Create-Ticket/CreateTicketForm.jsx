@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Card from '../Card/Card';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
 
 export const CreateTicketForm = ({ setActiveView }) => {
   const getUserInfo = () => {
@@ -17,30 +18,32 @@ export const CreateTicketForm = ({ setActiveView }) => {
 
   const { email, username } = getUserInfo();
 
-  // Ensuring initial state values to prevent uncontrolled input errors
+  // Form state
   const [subject, setSubject] = useState("");
   const [issue, setIssue] = useState("");
   const [category, setCategory] = useState("");
   const [priority, setPriority] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const API_CREATE_TICKET = import.meta.env.VITE_CREATE_TICKET;
 
   const handleCreateTicket = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-
+    
+    // Validate form inputs
     if (!subject || !issue || !category || !priority) {
-      setError("All fields are required.");
+      toast.error("All fields are required.");
       return;
     }
 
     const token = localStorage.getItem("userToken");
     if (!token) {
-      setError("Unauthorized! Please log in.");
+      toast.error("Unauthorized! Please log in.");
       return;
     }
+
+    // Show loading toast
+    const loadingToastId = toast.loading("Creating your ticket...");
+    setIsSubmitting(true);
 
     try {
       const response = await axios.post(
@@ -49,17 +52,39 @@ export const CreateTicketForm = ({ setActiveView }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setSuccess("Ticket created successfully!");
-      setTimeout(() => {
-        setSuccess("");
-      }, 5000);
+      // Update loading toast to success
+      toast.update(loadingToastId, { 
+        render: "Ticket created successfully!", 
+        type: "success", 
+        isLoading: false,
+        autoClose: 5000,
+        closeButton: true
+      });
+      
+      // Reset form fields
       setSubject("");
       setIssue("");
       setCategory("");
       setPriority("");
+      
+      // Navigate back to dashboard after a short delay
+      setTimeout(() => {
+        setActiveView("dashboard");
+      }, 2000);
+      
     } catch (err) {
       console.error("Creation error:", err.response?.data || err);
-      setError(err.response?.data?.message || "Error creating ticket.");
+      
+      // Update loading toast to error
+      toast.update(loadingToastId, {
+        render: err.response?.data?.message || "Error creating ticket. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+        closeButton: true
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -88,12 +113,6 @@ export const CreateTicketForm = ({ setActiveView }) => {
     initial: { scale: 1 },
     hover: { scale: 1.05 },
     tap: { scale: 0.95 }
-  };
-
-  const alertVariants = {
-    initial: { opacity: 0, y: -20 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -20 }
   };
 
   return (
@@ -140,34 +159,6 @@ export const CreateTicketForm = ({ setActiveView }) => {
           <motion.div variants={itemVariants}>
             Fields marked with (*) are mandatory
           </motion.div>
-          
-          <AnimatePresence>
-            {success && (
-              <motion.div 
-                className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-md"
-                variants={alertVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-              >
-                ✅ {success}
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
-          <AnimatePresence>
-            {error && (
-              <motion.div 
-                className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg shadow-md"
-                variants={alertVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-              >
-                ❌ {error}
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           <motion.div variants={itemVariants}>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -180,6 +171,7 @@ export const CreateTicketForm = ({ setActiveView }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Brief description of the issue"
               whileFocus={{ boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.2)" }}
+              disabled={isSubmitting}
             />
           </motion.div>
 
@@ -192,6 +184,7 @@ export const CreateTicketForm = ({ setActiveView }) => {
               onChange={(e) => setCategory(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               whileFocus={{ boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.2)" }}
+              disabled={isSubmitting}
             >
               <option value="">Select a category</option>
               <option value="hardware">Hardware</option>
@@ -211,6 +204,7 @@ export const CreateTicketForm = ({ setActiveView }) => {
               onChange={(e) => setPriority(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               whileFocus={{ boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.2)" }}
+              disabled={isSubmitting}
             >
               <option value="">Select priority</option>
               <option value="low">Low</option>
@@ -230,6 +224,7 @@ export const CreateTicketForm = ({ setActiveView }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Please provide detailed information about the issue"
               whileFocus={{ boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.2)" }}
+              disabled={isSubmitting}
             ></motion.textarea>
           </motion.div>
 
@@ -256,23 +251,36 @@ export const CreateTicketForm = ({ setActiveView }) => {
           >
             <motion.button
               type="button"
+              onClick={() => setActiveView("dashboard")}
               className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
               variants={buttonVariants}
               initial="initial"
               whileHover="hover"
               whileTap="tap"
+              disabled={isSubmitting}
             >
               Cancel
             </motion.button>
             <motion.button
               type="submit"
-              className="px-4 py-2 bg-indigo-700 rounded-md text-sm font-medium text-white hover:bg-indigo-800"
+              className={`px-4 py-2 bg-indigo-700 rounded-md text-sm font-medium text-white hover:bg-indigo-800 flex items-center justify-center ${isSubmitting ? 'opacity-75 cursor-not-allowed' : ''}`}
               variants={buttonVariants}
               initial="initial"
-              whileHover="hover"
-              whileTap="tap"
+              whileHover={isSubmitting ? {} : "hover"}
+              whileTap={isSubmitting ? {} : "tap"}
+              disabled={isSubmitting}
             >
-              Submit Ticket
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Submitting...
+                </>
+              ) : (
+                'Submit Ticket'
+              )}
             </motion.button>
           </motion.div>
         </motion.form>

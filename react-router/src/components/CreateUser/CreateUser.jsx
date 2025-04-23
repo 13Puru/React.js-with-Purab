@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, User, Mail, Key, Briefcase, Shield, AlertTriangle, Eye, EyeOff } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion"; // Import framer-motion
+import { motion, AnimatePresence } from "framer-motion";
 import Card from "../Card/Card";
 import axios from "axios";
+import { toast } from "react-toastify"; // Import toast from react-toastify
 
 const CreateUser = ({setActiveView}) => {
   const navigate = useNavigate();
@@ -104,8 +105,24 @@ const CreateUser = ({setActiveView}) => {
       tempErrors.confirmPassword = "Passwords do not match";
       isValid = false;
     }
+
+    if (!formData.role) {
+      tempErrors.role = "Please select a user role";
+      isValid = false;
+    }
+
+    if (!formData.department) {
+      tempErrors.department = "Please select a department";
+      isValid = false;
+    }
     
     setErrors(tempErrors);
+
+    // Show toast for validation errors
+    if (!isValid) {
+      toast.error("Please correct the errors in the form");
+    }
+
     return isValid;
   };
 
@@ -146,10 +163,12 @@ const CreateUser = ({setActiveView}) => {
         
         // Handle success
         if (response.data.success) {
-          // Success animation before redirecting
+          // Success toast notification
+          toast.success("User created successfully! Login credentials sent via email.");
           setErrors({});
+          
+          // Redirect after a short delay
           setTimeout(() => {
-            alert("User created successfully! Login credentials sent via email.");
             setActiveView("ViewUsers");
           }, 500);
         } else {
@@ -161,12 +180,16 @@ const CreateUser = ({setActiveView}) => {
         
         // Handle specific error messages from the API
         if (error.response && error.response.data) {
+          const errorMessage = error.response.data.message || "Failed to create user. Please try again.";
+          toast.error(errorMessage);
           setErrors({
-            submit: error.response.data.message || "Failed to create user. Please try again."
+            submit: errorMessage
           });
         } else {
+          const errorMessage = error.message || "Failed to create user. Please try again.";
+          toast.error(errorMessage);
           setErrors({
-            submit: "Failed to create user. Please try again."
+            submit: errorMessage
           });
         }
       } finally {
@@ -203,7 +226,10 @@ const CreateUser = ({setActiveView}) => {
         transition={{ type: "spring", stiffness: 100 }}
       >
         <motion.button 
-          onClick={() => setActiveView("dashboard")}
+          onClick={() => {
+            toast.info("Returning to dashboard");
+            setActiveView("dashboard");
+          }}
           className="mr-4 p-2 rounded-full hover:bg-gray-100"
           whileHover={{ scale: 1.1, backgroundColor: "#f3f4f6" }}
           whileTap={{ scale: 0.95 }}
@@ -545,6 +571,19 @@ const CreateUser = ({setActiveView}) => {
                   </div>
                 </motion.label>
               </div>
+              <AnimatePresence>
+                {errors.role && (
+                  <motion.p 
+                    className="mt-1 text-sm text-red-600"
+                    variants={errorVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                  >
+                    {errors.role}
+                  </motion.p>
+                )}
+              </AnimatePresence>
             </motion.div>
 
             <motion.div 
@@ -553,7 +592,10 @@ const CreateUser = ({setActiveView}) => {
             >
               <motion.button
                 type="button"
-                onClick={() => setActiveView("dashboard")}
+                onClick={() => {
+                  toast.info("Changes discarded");
+                  setActiveView("dashboard");
+                }}
                 className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 whileHover={{ scale: 1.05, backgroundColor: "#f9fafb" }}
                 whileTap={{ scale: 0.95 }}

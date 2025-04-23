@@ -4,6 +4,7 @@ import { ArrowLeft, User, Mail, Calendar, LogOut, CheckCircle, Ticket, CheckSqua
 import Card from "../Card/Card";
 import { motion } from "framer-motion";
 import axios from "axios";
+import { toast } from "react-toastify"; // Import toast
 
 const UserProfile = ({ setActiveView }) => {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ const UserProfile = ({ setActiveView }) => {
         if (!token) {
             console.error("Token not found. Redirecting to login.");
             setError("Unauthorized. Please log in again.");
+            toast.error("Session expired. Please login again."); // Add toast for unauthorized
             return;
         }
 
@@ -53,15 +55,19 @@ const UserProfile = ({ setActiveView }) => {
             
             // Fetch ticket statistics
             await fetchTicketStats(userId, token);
+            toast.success("Profile loaded successfully"); // Add toast for successful profile load
         } else {
             setError("Failed to load profile. Please try again.");
+            toast.error("Failed to load profile data"); // Add toast for profile load failure
         }
       } catch (err) {
         console.error("Error fetching profile:", err);
         if (err.response && err.response.status === 401) {
           setError("Unauthorized. Please login again.");
+          toast.error("Session expired. Please login again."); // Add toast for unauthorized
         } else {
           setError("Failed to load profile. Please try again.");
+          toast.error("Failed to load profile. Please try again."); // Add toast for general error
         }
       } finally {
         setIsLoading(false);
@@ -80,13 +86,16 @@ const UserProfile = ({ setActiveView }) => {
     
         if (response.data.success) {
           setTicketStats({
-            created: response.data.ticket_status.created_tickets || 0,  // ✅ Correct key
+            created: response.data.ticket_status.created_tickets || 0,
             resolved: response.data.ticket_status.resolved_tickets || 0,
             pending: response.data.ticket_status.pending_tickets || 0
           });
+        } else {
+          toast.warning("Could not load ticket statistics"); // Add toast for ticket stats failure
         }
       } catch (err) {
         console.error("Error fetching ticket stats:", err);
+        toast.warning("Failed to load ticket statistics"); // Add toast for ticket stats error
       }
     };
     
@@ -148,6 +157,7 @@ const UserProfile = ({ setActiveView }) => {
   const handleLogout = () => {
     localStorage.removeItem('userId');
     localStorage.removeItem('userToken');
+    toast.info("You have been logged out successfully"); // Add toast for logout
     navigate('/login');
   };
 
@@ -156,6 +166,8 @@ const UserProfile = ({ setActiveView }) => {
       const userId = localStorage.getItem("userId");
       const token = localStorage.getItem("userToken");
   
+      toast.info("Sending verification email..."); // Add loading toast
+      
       await axios.post(
         API_SEND_OTP,
         { userId },
@@ -167,12 +179,17 @@ const UserProfile = ({ setActiveView }) => {
         }
       );
   
-      alert("Verification email sent. Please check your inbox.");
+      toast.success("Verification email sent. Please check your inbox."); // Add success toast
       navigate("/otp"); // Navigate to OTP page after success
     } catch (err) {
       console.error("Error sending verification email:", err);
-      alert("Failed to send verification email. Please try again.");
+      toast.error("Failed to send verification email. Please try again."); // Add error toast
     }
+  };
+
+  const handleReload = () => {
+    toast.info("Reloading profile data..."); // Add toast for reload
+    window.location.reload();
   };
 
   if (isLoading) {
@@ -205,7 +222,7 @@ const UserProfile = ({ setActiveView }) => {
           <div className="p-6 text-center">
             <p className="text-red-600">{error}</p>
             <button 
-              onClick={() => window.location.reload()} 
+              onClick={handleReload} 
               className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
             >
               Try Again
@@ -220,7 +237,10 @@ const UserProfile = ({ setActiveView }) => {
     <div className="p-6">
       <div className="flex items-center mb-6">
         <button 
-          onClick={() => setActiveView("dashboard")} 
+          onClick={() => {
+            setActiveView("dashboard");
+            toast.info("Returning to dashboard"); // Add toast for navigation
+          }} 
           className="mr-4 p-2 rounded-full hover:bg-gray-100"
         >
           <ArrowLeft size={20} className="text-gray-700" />

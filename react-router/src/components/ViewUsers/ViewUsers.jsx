@@ -13,10 +13,69 @@ import {
   RefreshCw,
   UserCog,
   CheckCircle,
-  XCircle
+  XCircle,
+  CheckCheck,
+  AlertCircle,
+  X
 } from "lucide-react";
 import Card from "../Card/Card";
 import { motion, AnimatePresence } from "framer-motion";
+
+const Toast = ({ message, type, onClose }) => {
+  // Define toast colors based on type
+  const bgColors = {
+    success: "bg-green-100 border-green-500",
+    error: "bg-red-100 border-red-500",
+    info: "bg-blue-100 border-blue-500",
+    warning: "bg-yellow-100 border-yellow-500"
+  };
+  
+  const textColors = {
+    success: "text-green-800",
+    error: "text-red-800",
+    info: "text-blue-800",
+    warning: "text-yellow-800"
+  };
+  
+  const icons = {
+    success: <CheckCheck size={18} className="text-green-600" />,
+    error: <AlertCircle size={18} className="text-red-600" />,
+    info: <AlertCircle size={18} className="text-blue-600" />,
+    warning: <AlertCircle size={18} className="text-yellow-600" />
+  };
+  
+  // Auto-close after 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, [onClose]);
+  
+  return (
+    <motion.div 
+      className={`${bgColors[type]} ${textColors[type]} p-4 rounded-md shadow-md border-l-4 flex items-start`}
+      initial={{ opacity: 0, y: -20, x: 20 }}
+      animate={{ opacity: 1, y: 0, x: 0 }}
+      exit={{ opacity: 0, y: -20, x: 20 }}
+      transition={{ type: "spring", stiffness: 200, damping: 20 }}
+    >
+      <div className="mr-3">
+        {icons[type]}
+      </div>
+      <div className="flex-1">
+        {message}
+      </div>
+      <button 
+        onClick={onClose} 
+        className="ml-4 text-gray-500 hover:text-gray-700 focus:outline-none"
+      >
+        <X size={16} />
+      </button>
+    </motion.div>
+  );
+};
 
 const ViewUsers = ({setActiveView}) => {
   const navigate = useNavigate();
@@ -29,11 +88,23 @@ const ViewUsers = ({setActiveView}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [toasts, setToasts] = useState([]);
 
   //api endpoints
   const API_GET_USER = import.meta.env.VITE_GET_ALL;
   const API_RESTRICT = import.meta.env.VITE_RESTRICT;
   const API_UNRESTRICT = import.meta.env.VITE_UNRESTRICT;
+
+  // Show toast notification
+  const showToast = (message, type = "info") => {
+    const id = Date.now();
+    setToasts(prevToasts => [...prevToasts, { id, message, type }]);
+  };
+
+  // Remove toast notification
+  const removeToast = (id) => {
+    setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -46,6 +117,7 @@ const ViewUsers = ({setActiveView}) => {
       
       if (!token) {
         setError("Authentication token is missing. Please log in again.");
+        showToast("Authentication token is missing. Please log in again.", "error");
         setLoading(false);
         return;
       }
@@ -81,12 +153,20 @@ const ViewUsers = ({setActiveView}) => {
         
         setUsers(transformedUsers);
         setError(null);
+        
+        // Only show success toast when there was a previous error or during initial load
+        if (error || !users.length) {
+          showToast("Users loaded successfully", "success");
+        }
       } else {
         setError("Failed to fetch users: " + (response.data.message || "Unknown error"));
+        showToast("Failed to fetch users: " + (response.data.message || "Unknown error"), "error");
       }
     } catch (err) {
       console.error("Error fetching users:", err);
-      setError(err.response?.data?.message || "Failed to fetch users");
+      const errorMessage = err.response?.data?.message || "Failed to fetch users";
+      setError(errorMessage);
+      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -155,14 +235,14 @@ const ViewUsers = ({setActiveView}) => {
     }
   };
 
-  const handleRestrictUser = async (userId) => {
+  const handleRestrictUser = async (userId, userName) => {
     if (window.confirm("Are you sure you want to restrict this user?")) {
       try {
         setActionInProgress(true);
         const token = localStorage.getItem("userToken");
         
         if (!token) {
-          alert("Authentication token is missing. Please log in again.");
+          showToast("Authentication token is missing. Please log in again.", "error");
           setActionInProgress(false);
           return;
         }
@@ -179,27 +259,27 @@ const ViewUsers = ({setActiveView}) => {
           // Refresh the user list from the database to ensure we have the latest data
           await fetchUsers();
           // Success notification
-          alert("User has been restricted successfully.");
+          showToast(`User ${userName} has been restricted successfully.`, "success");
         } else {
-          alert("Failed to restrict user: " + (response.data.message || "Unknown error"));
+          showToast("Failed to restrict user: " + (response.data.message || "Unknown error"), "error");
         }
       } catch (err) {
         console.error("Error restricting user:", err);
-        alert(err.response?.data?.message || "Failed to restrict user");
+        showToast(err.response?.data?.message || "Failed to restrict user", "error");
       } finally {
         setActionInProgress(false);
       }
     }
   };
 
-  const handleUnrestrictUser = async (userId) => {
+  const handleUnrestrictUser = async (userId, userName) => {
     if (window.confirm("Are you sure you want to unrestrict this user?")) {
       try {
         setActionInProgress(true);
         const token = localStorage.getItem("userToken");
         
         if (!token) {
-          alert("Authentication token is missing. Please log in again.");
+          showToast("Authentication token is missing. Please log in again.", "error");
           setActionInProgress(false);
           return;
         }
@@ -216,13 +296,13 @@ const ViewUsers = ({setActiveView}) => {
           // Refresh the user list from the database to ensure we have the latest data
           await fetchUsers();
           // Success notification
-          alert("User has been unrestricted successfully.");
+          showToast(`User ${userName} has been unrestricted successfully.`, "success");
         } else {
-          alert("Failed to unrestrict user: " + (response.data.message || "Unknown error"));
+          showToast("Failed to unrestrict user: " + (response.data.message || "Unknown error"), "error");
         }
       } catch (err) {
         console.error("Error unrestricting user:", err);
-        alert(err.response?.data?.message || "Failed to unrestrict user");
+        showToast(err.response?.data?.message || "Failed to unrestrict user", "error");
       } finally {
         setActionInProgress(false);
       }
@@ -277,11 +357,25 @@ const ViewUsers = ({setActiveView}) => {
 
   return (
     <motion.div 
-      className="p-6" 
+      className="p-6 relative" 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
+      {/* Toast Container */}
+      <div className="fixed top-4 right-4 z-50 flex flex-col space-y-2">
+        <AnimatePresence>
+          {toasts.map(toast => (
+            <Toast
+              key={toast.id}
+              message={toast.message}
+              type={toast.type}
+              onClose={() => removeToast(toast.id)}
+            />
+          ))}
+        </AnimatePresence>
+      </div>
+
       <motion.div 
         className="flex items-center justify-between mb-6"
         initial={{ opacity: 0, y: -20 }}
@@ -601,7 +695,7 @@ const ViewUsers = ({setActiveView}) => {
                           <div className="flex justify-center space-x-2">
                             {user.status === "active" && (
                               <motion.button
-                                onClick={() => handleRestrictUser(user.id)}
+                                onClick={() => handleRestrictUser(user.id, user.name)}
                                 className="text-red-600 hover:text-red-900 focus:outline-none disabled:opacity-50 flex items-center"
                                 title="Restrict User"
                                 disabled={actionInProgress}
@@ -615,7 +709,7 @@ const ViewUsers = ({setActiveView}) => {
                             
                             {user.status === "restricted" && (
                               <motion.button
-                                onClick={() => handleUnrestrictUser(user.id)}
+                                onClick={() => handleUnrestrictUser(user.id, user.name)}
                                 className="text-green-600 hover:text-green-900 focus:outline-none disabled:opacity-50 flex items-center"
                                 title="Unrestrict User"
                                 disabled={actionInProgress}

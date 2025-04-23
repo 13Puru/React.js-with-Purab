@@ -3,6 +3,15 @@ import { Link } from 'react-router-dom';
 import { Facebook, Twitter, Github, Dribbble, MessageCircle } from "lucide-react";
 
 export default function Footer() {
+
+    const scrollToTop = () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    };
+
+
     return (
         <footer className="bg-white border-t border-indigo-100">
             <div className="max-w-6xl mx-auto px-6 py-12">
@@ -25,17 +34,17 @@ export default function Footer() {
                         <h3 className="text-sm font-semibold text-gray-800 uppercase mb-4">Resources</h3>
                         <ul className="space-y-3">
                             <li>
-                                <Link to="/" className="text-gray-600 hover:text-indigo-700 transition-colors duration-200">
+                                <Link to="/" className="text-gray-600 hover:text-indigo-700 transition-colors duration-200" onClick={scrollToTop}>
                                     Home
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/about" className="text-gray-600 hover:text-indigo-700 transition-colors duration-200">
+                                <Link to="/about" className="text-gray-600 hover:text-indigo-700 transition-colors duration-200" onClick={scrollToTop}>
                                     About
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/contact-us" className="text-gray-600 hover:text-indigo-700 transition-colors duration-200">
+                                <Link to="/contact-us" className="text-gray-600 hover:text-indigo-700 transition-colors duration-200" onClick={scrollToTop}>
                                     Contact Us
                                 </Link>
                             </li>

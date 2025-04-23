@@ -7,15 +7,15 @@ const AUTH_STATUS_CHANGE = "authStatusChange";
 
 // Helper function to publish auth status changes
 export const publishAuthChange = () => {
-  const event = new CustomEvent(AUTH_STATUS_CHANGE);
-  document.dispatchEvent(event);
+    const event = new CustomEvent(AUTH_STATUS_CHANGE);
+    document.dispatchEvent(event);
 };
 
 export default function Header({ setActiveView }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const location = useLocation();
-    
+
     // Check authentication status function
     const checkAuthStatus = () => {
         const token = localStorage.getItem('userToken');
@@ -23,22 +23,22 @@ export default function Header({ setActiveView }) {
     };
 
     const name = localStorage.getItem("username")
-    
+
     // Main effect for auth status
     useEffect(() => {
         // Initial check
         checkAuthStatus();
-        
+
         // Set up event listeners for auth changes
         document.addEventListener(AUTH_STATUS_CHANGE, checkAuthStatus);
         window.addEventListener('storage', checkAuthStatus);
-        
+
         return () => {
             document.removeEventListener(AUTH_STATUS_CHANGE, checkAuthStatus);
             window.removeEventListener('storage', checkAuthStatus);
         };
     }, []);
-    
+
     // Extra effect to check auth on route changes
     useEffect(() => {
         checkAuthStatus();
@@ -58,7 +58,7 @@ export default function Header({ setActiveView }) {
                             <span className="text-gray-800">IT</span>
                         </span>
                     </Link>
-                    
+
                     {/* Desktop Navigation */}
                     <div className="hidden lg:flex items-center space-x-8">
                         <NavLink
@@ -86,16 +86,25 @@ export default function Header({ setActiveView }) {
                             About
                         </NavLink>
                     </div>
-                    
+
                     {/* Desktop Buttons */}
                     <div className="hidden lg:flex items-center space-x-4">
                         {isLoggedIn ? (
-                            <button
-                                className="flex items-center space-x-2 text-indigo-700 hover:text-indigo-800 font-medium cursor-pointer"
-                            >
-                                <UserCircle size={24} />
-                                <span>Welcome {name}</span>
-                            </button>
+                            <>
+                                <button
+                                    className="flex items-center space-x-2 text-indigo-700 hover:text-indigo-800 font-medium cursor-pointer"
+                                >
+                                    <UserCircle size={24} />
+                                    <span>Welcome {name}</span>
+                                </button>
+
+                                <Link
+                                    to="/dashboard"
+                                    className="text-indigo-700 hover:text-indigo-800 border border-indigo-200 hover:bg-gray-50 px-4 py-2 rounded-md font-medium transition-colors duration-200"
+                                >
+                                    View Dashboard
+                                </Link>
+                            </>
                         ) : (
                             <>
                                 <Link
@@ -115,7 +124,7 @@ export default function Header({ setActiveView }) {
                     </div>
 
                     {/* Mobile Menu Button */}
-                    <button 
+                    <button
                         onClick={toggleMobileMenu}
                         className="lg:hidden bg-indigo-50 hover:bg-indigo-100 p-2 rounded-md transition-colors duration-200"
                         aria-label="Toggle mobile menu"
@@ -150,7 +159,7 @@ export default function Header({ setActiveView }) {
                             >
                                 Contact Us
                             </NavLink>
-                            
+
                             <div className="flex flex-col space-y-3 pt-4">
                                 {isLoggedIn ? (
                                     <button
