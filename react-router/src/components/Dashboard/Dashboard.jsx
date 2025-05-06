@@ -35,6 +35,7 @@ import withRoleAccess from "../../hoc/withRoleAccess";
 import statusColors from "../Colors/StatusColors";
 import priorityColors from "../Colors/priorityColors";
 import actionColors from "../Colors/actionColors";
+import CategoryUpdateForm from "../UpdateCategory/UpdateCategory";
 
 // Wrap TicketDetails with role-based access control
 const TicketDetailsWithRole = withRoleAccess(TicketDetails);
@@ -538,6 +539,15 @@ const Dashboard = ({ userRole }) => {
                                             <UserPlus size={16} className={`text-gray-600 ${isCollapsed ? '' : 'mr-2'}`} />
                                             {!isCollapsed && <span className="text-sm">Create User</span>}
                                         </motion.button>
+                                        <motion.button
+                                            onClick={() => setActiveView("CategoryUpdate")}
+                                            className={`w-full text-left ${isCollapsed ? 'justify-center' : ''} flex items-center px-2 py-2 rounded-md hover:bg-gray-100 text-gray-700`}
+                                            whileHover={{ backgroundColor: "rgba(243, 244, 246, 1)" }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            <UserPlus size={16} className={`text-gray-600 ${isCollapsed ? '' : 'mr-2'}`} />
+                                            {!isCollapsed && <span className="text-sm">Update Category</span>}
+                                        </motion.button>
                                     </>
                                 )}
 
@@ -780,13 +790,25 @@ const Dashboard = ({ userRole }) => {
 
                     {activeView === "UserProfile" && (
                         <motion.div
-                            key="createUser"
+                            key="userProfile"
                             variants={pageTransition}
                             initial="hidden"
                             animate="visible"
                             exit="exit"
                         >
                             <UserProfile setActiveView={setActiveView} />
+                        </motion.div>
+                    )}
+
+                    {activeView === "CategoryUpdate" && (
+                        <motion.div
+                            key="updateCategory"
+                            variants={pageTransition}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                        >
+                            <CategoryUpdateForm setActiveView={setActiveView} />
                         </motion.div>
                     )}
 
